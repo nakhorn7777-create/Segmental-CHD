@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Segmental Analysis CHD Simulator</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f7fa;
+            color: #333;
+        }
+        .container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .controls-panel {
+            flex: 1;
+            min-width: 300px;
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+        }
+        .visual-panel {
+            flex: 1.5;
+            min-width: 450px;
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        h1, h2 {
+            margin-top: 0;
+            color: #2c3e50;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+        select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            background-color: #fff;
+            font-size: 1rem;
+        }
+        canvas {
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            background-color: #fafafa;
+        }
+        .notation-badge {
+            margin-top: 15px;
+            padding: 10px 20px;
+            background-color: #e8f4fd;
+            color: #1d88e5;
+            border-radius: 20px;
+            font-weight: bold;
+            font-size: 1.2rem;
+        }
+        .preset-buttons {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        .btn {
+            padding: 8px 12px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        .btn-primary { background-color: #1d88e5; color: white; }
+        .btn-secondary { background-color: #78909c; color: white; }
+    </style>
+</head>
+<body>
+
+    <div style="text-align: center; margin-bottom: 20px;">
+        <h1>Segmental Analysis CHD Simulator (Prototype)</h1>
+        <p>เครื่องมือสาธิตโครงสร้างโรคหัวใจพิการแต่กำเนิดสำหรับบุคลากรทางการแพทย์</p>
+    </div>
+
+    <div class="container">
+        <div class="controls-panel">
+            <h2>1. Segmental Inputs</h2>
+            
+            <div class="preset-buttons">
+                <button class="btn btn-secondary" onclick="applyPreset('normal')">Normal</button>
+                <button class="btn btn-primary" onclick="applyPreset('dtga')">d-TGA เคสตัวอย่าง</button>
+            </div>
+
+            <div class="form-group">
+                <label for="situs">1. Atrial Situs</label>
+                <select id="situs" onchange="drawHeart()">
+                    <option value="S">Situs Solitus (S)</option>
+                    <option value="I">Situs Inversus (I)</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="loop">2. Ventricular Loop</label>
+                <select id="loop" onchange="drawHeart()">
+                    <option value="D">D-Loop (RV Right, LV Left)</option>
+                    <option value="L">L-Loop (RV Left, LV Right)</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="av">3. AV Connection</label>
+                <select id="av" onchange="drawHeart()">
+                    <option value="concordant">Concordant (RA->RV, LA->LV)</option>
+                    <option value="discordant">Discordant (RA->LV, LA->RV)</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="va">4. VA Connection</label>
+                <select id="va" onchange="drawHeart()">
+                    <option value="concordant">Concordant (LV->Ao, RV->PA)</option>
+                    <option value="discordant">Discordant (RV->Ao, LV->PA) - TGA</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="vessels">5. Great Arteries Relationship</label>
+                <select id="vessels" onchange="drawHeart()">
+                    <option value="normal">Normal (Ao Posterior/Right of PA)</option>
+                    <option value="d-loop">D-Malposition (Ao Anterior/Right)</option>
+                    <option value="l-loop">L-Malposition (Ao Anterior/Left)</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="visual-panel">
+            <h2>2. Schematic Diagram</h2>
+            <canvas id="heartCanvas" width="450" height="400"></canvas>
+            <div class="notation-badge" id="notationDisplay">{S, D, S}</div>
+            <div style="margin-top: 10px; font-size: 0.85rem; color: #666; text-align: center;">
+                <span style="color: #d32f2f; font-weight: bold;">■ เส้นสีแดง = Systemic / Aorta</span> | 
+                <span style="color: #1976d2; font-weight: bold;">■ เส้นสีน้ำเงิน = Pulmonary / PA</span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('heartCanvas');
+        const ctx = canvas.getContext('2d');
+
+        function applyPreset(type) {
+            if(type === 'normal') {
+                document.getElementById('situs').value = 'S';
+                document.getElementById('loop').value = 'D';
+                document.getElementById('av').value = 'concordant';
+                document.getElementById('va').value = 'concordant';
+                document.getElementById('vessels').value = 'normal';
+            } else if(type === 'dtga') {
+                document.getElementById('situs').value = 'S';
+                document.getElementById('loop').value = 'D';
+                document.getElementById('av').value = 'concordant';
+                document.getElementById('va').value = 'discordant';
+                document.getElementById('vessels').value = 'd-loop';
+            }
+            drawHeart();
+        }
+
+        function drawHeart() {
+            const situs = document.getElementById('situs').value;
+            const loop = document.getElementById('loop').value;
+            const av = document.getElementById('av').value;
+            const va = document.getElementById('va').value;
+            const vessels = document.getElementById('vessels').value;
+
+            // Update Notation Badge
+            let vaSign = va === 'concordant' ? 'S' : 'D';
+            document.getElementById('notationDisplay').innerText = `{${situs}, ${loop}, ${vaSign}}`;
+
+            // Clear Canvas
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // พิกัดพื้นฐานของแต่ละพาร์ท
+            let raX = 150, laX = 300, atriumY = 260;
+            let rvX = 150, lvX = 300, ventricleY = 140; // กลับแกนด้านบนเป็นฐาน
+
+            // 1. ตรรกะดึงตำแหน่ง Atrium ตาม Situs
+            if (situs === 'I') {
+                raX = 300; laX = 150;
+            }
+
+            // 2. ตรรกะดึงตำแหน่ง Ventricle ตาม Loop
+            if (loop === 'L') {
+                rvX = 300; lvX = 150;
+            }
+
+            // วาดกรอบ Atria (ห้องบน)
+            drawRoom(raX, atriumY, "RA (เลือดดำ)", "#bbdefb", "#1976d2");
+            drawRoom(laX, atriumY, "LA (เลือดแดง)", "#ffcdd2", "#d32f2f");
+
+            // วาดกรอบ Ventricles (ห้องล่าง)
+            drawRoom(rvX, ventricleY, "RV", "#e3f2fd", "#1976d2");
+            drawRoom(lvX, ventricleY, "LV", "#ffebee", "#d32f2f");
+
+            // เส้นเชื่อม AV Connection
+            ctx.strokeStyle = '#90a4ae';
+            ctx.lineWidth = 4;
+            ctx.beginPath();
+            ctx.moveTo(raX, atriumY - 25); ctx.lineTo(av === 'concordant' ? rvX : lvX, ventricleY + 25);
+            ctx.moveTo(laX, atriumY - 25); ctx.lineTo(av === 'concordant' ? lvX : rvX, ventricleY + 25);
+            ctx.stroke();
+
+            // 3. ตรรกะการต่อเส้นเลือดใหญ่ (VA Connection & Relationship)
+            let aoTargetX = 200, paTargetX = 250; // จุดออกของเส้นเลือดด้านบนสุด
+
+            if (vessels === 'd-loop') {
+                aoTargetX = 260; paTargetX = 190;
+            } else if (vessels === 'l-loop') {
+                aoTargetX = 190; paTargetX = 260;
+            }
+
+            // วาดท่อเส้นเลือดใหญ่ตามจุดกำเนิด (Concordance vs Discordance)
+            if (va === 'discordant') {
+                // d-TGA: RV ต่อไป Ao, LV ต่อไป PA
+                drawVessel(rvX, ventricleY - 25, aoTargetX, 50, "#d32f2f", "Aorta (Ao)");
+                drawVessel(lvX, ventricleY - 25, paTargetX, 60, "#1976d2", "Pulmonary Artery (PA)");
+            } else {
+                // ปกติ: LV ต่อไป Ao, RV ต่อไป PA
+                drawVessel(lvX, ventricleY - 25, aoTargetX, 50, "#d32f2f", "Aorta (Ao)");
+                drawVessel(rvX, ventricleY - 25, paTargetX, 60, "#1976d2", "Pulmonary Artery (PA)");
+            }
+        }
+
+        function drawRoom(x, y, text, bgColor, textColor) {
+            ctx.fillStyle = bgColor;
+            ctx.strokeStyle = textColor;
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.arc(x, y, 35, 0, 2 * Math.PI);
+            ctx.fill();
+            ctx.stroke();
+
+            ctx.fillStyle = "#333";
+            ctx.font = "bold 12px Arial";
+            ctx.textAlign = "center";
+            ctx.fillText(text, x, y + 5);
+        }
+
+        function drawVessel(startX, startY, endX, endY, color, label) {
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 12;
+            ctx.lineCap = "round";
+            ctx.beginPath();
+            ctx.moveTo(startX, startY);
+            ctx.quadraticCurveTo((startX+endX)/2, (startY+endY)/2 - 20, endX, endY);
+            ctx.stroke();
+
+            // ป้ายชื่อเส้นเลือด
+            ctx.fillStyle = color;
+            ctx.font = "bold 13px Arial";
+            ctx.fillText(label, endX, endY - 10);
+        }
+
+        // รันครั้งแรกเมื่อโหลดหน้าเว็บ
+        applyPreset('dtga');
+    </script>
+</body>
+</html>
