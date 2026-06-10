@@ -59,10 +59,24 @@
             background-color: #fff;
             font-size: 1rem;
         }
-        canvas {
+        .image-container {
             border: 1px solid #e0e0e0;
             border-radius: 8px;
             background-color: #fafafa;
+            width: 100%;
+            max-width: 450px;
+            min-height: 400px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+            padding: 10px;
+        }
+        #heartImage {
+            max-width: 100%;
+            max-height: 500px;
+            height: auto;
+            object-fit: contain;
         }
         .notation-badge {
             margin-top: 15px;
@@ -101,13 +115,13 @@
             <h2>1. Segmental Inputs</h2>
             
             <div class="preset-buttons">
-                <button class="btn btn-secondary" onclick="applyPreset('normal')">Normal</button>
-                <button class="btn btn-primary" onclick="applyPreset('dtga')">d-TGA เคสตัวอย่าง</button>
+                <button class="btn btn-secondary" onclick="applyPreset('normal')">Normal Anatomy</button>
+                <button class="btn btn-primary" onclick="applyPreset('dtga')">d-TGA</button>
             </div>
 
             <div class="form-group">
                 <label for="situs">1. Atrial Situs</label>
-                <select id="situs" onchange="drawHeart()">
+                <select id="situs" onchange="updateUI()">
                     <option value="S">Situs Solitus (S)</option>
                     <option value="I">Situs Inversus (I)</option>
                 </select>
@@ -115,7 +129,7 @@
 
             <div class="form-group">
                 <label for="loop">2. Ventricular Loop</label>
-                <select id="loop" onchange="drawHeart()">
+                <select id="loop" onchange="updateUI()">
                     <option value="D">D-Loop (RV Right, LV Left)</option>
                     <option value="L">L-Loop (RV Left, LV Right)</option>
                 </select>
@@ -123,7 +137,7 @@
 
             <div class="form-group">
                 <label for="av">3. AV Connection</label>
-                <select id="av" onchange="drawHeart()">
+                <select id="av" onchange="updateUI()">
                     <option value="concordant">Concordant (RA->RV, LA->LV)</option>
                     <option value="discordant">Discordant (RA->LV, LA->RV)</option>
                 </select>
@@ -131,7 +145,7 @@
 
             <div class="form-group">
                 <label for="va">4. VA Connection</label>
-                <select id="va" onchange="drawHeart()">
+                <select id="va" onchange="updateUI()">
                     <option value="concordant">Concordant (LV->Ao, RV->PA)</option>
                     <option value="discordant">Discordant (RV->Ao, LV->PA) - TGA</option>
                 </select>
@@ -139,7 +153,7 @@
 
             <div class="form-group">
                 <label for="vessels">5. Great Arteries Relationship</label>
-                <select id="vessels" onchange="drawHeart()">
+                <select id="vessels" onchange="updateUI()">
                     <option value="normal">Normal (Ao Posterior/Right of PA)</option>
                     <option value="d-loop">D-Malposition (Ao Anterior/Right)</option>
                     <option value="l-loop">L-Malposition (Ao Anterior/Left)</option>
@@ -148,20 +162,18 @@
         </div>
 
         <div class="visual-panel">
-            <h2>2. Schematic Diagram</h2>
-            <canvas id="heartCanvas" width="450" height="400"></canvas>
+            <h2>2. Anatomical Diagram</h2>
+            <div class="image-container">
+                <img id="heartImage" src="normal-heart.png" alt="Heart Structure">
+            </div>
             <div class="notation-badge" id="notationDisplay">{S, D, S}</div>
-            <div style="margin-top: 10px; font-size: 0.85rem; color: #666; text-align: center;">
-                <span style="color: #d32f2f; font-weight: bold;">■ เส้นสีแดง = Systemic / Aorta</span> | 
-                <span style="color: #1976d2; font-weight: bold;">■ เส้นสีน้ำเงิน = Pulmonary / PA</span>
+            <div style="margin-top: 10px; font-size: 0.9rem; color: #555; text-align: center; max-width: 400px;" id="statusMessage">
+                แสดงโครงสร้างหัวใจปกติ (Normal Anatomy) ตามรูปภาพทางการแพทย์ที่คุณอัปโหลด
             </div>
         </div>
     </div>
 
     <script>
-        const canvas = document.getElementById('heartCanvas');
-        const ctx = canvas.getContext('2d');
-
         function applyPreset(type) {
             if(type === 'normal') {
                 document.getElementById('situs').value = 'S';
@@ -176,106 +188,36 @@
                 document.getElementById('va').value = 'discordant';
                 document.getElementById('vessels').value = 'd-loop';
             }
-            drawHeart();
+            updateUI();
         }
 
-        function drawHeart() {
+        function updateUI() {
             const situs = document.getElementById('situs').value;
             const loop = document.getElementById('loop').value;
-            const av = document.getElementById('av').value;
             const va = document.getElementById('va').value;
-            const vessels = document.getElementById('vessels').value;
+            
+            const imgElement = document.getElementById('heartImage');
+            const msgElement = document.getElementById('statusMessage');
 
-            // Update Notation Badge
+            // อัปเดตตัวย่อระบบสากล {S, D, S}
             let vaSign = va === 'concordant' ? 'S' : 'D';
             document.getElementById('notationDisplay').innerText = `{${situs}, ${loop}, ${vaSign}}`;
 
-            // Clear Canvas
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-            // พิกัดพื้นฐานของแต่ละพาร์ท
-            let raX = 150, laX = 300, atriumY = 260;
-            let rvX = 150, lvX = 300, ventricleY = 140; // กลับแกนด้านบนเป็นฐาน
-
-            // 1. ตรรกะดึงตำแหน่ง Atrium ตาม Situs
-            if (situs === 'I') {
-                raX = 300; laX = 150;
-            }
-
-            // 2. ตรรกะดึงตำแหน่ง Ventricle ตาม Loop
-            if (loop === 'L') {
-                rvX = 300; lvX = 150;
-            }
-
-            // วาดกรอบ Atria (ห้องบน)
-            drawRoom(raX, atriumY, "RA (เลือดดำ)", "#bbdefb", "#1976d2");
-            drawRoom(laX, atriumY, "LA (เลือดแดง)", "#ffcdd2", "#d32f2f");
-
-            // วาดกรอบ Ventricles (ห้องล่าง)
-            drawRoom(rvX, ventricleY, "RV", "#e3f2fd", "#1976d2");
-            drawRoom(lvX, ventricleY, "LV", "#ffebee", "#d32f2f");
-
-            // เส้นเชื่อม AV Connection
-            ctx.strokeStyle = '#90a4ae';
-            ctx.lineWidth = 4;
-            ctx.beginPath();
-            ctx.moveTo(raX, atriumY - 25); ctx.lineTo(av === 'concordant' ? rvX : lvX, ventricleY + 25);
-            ctx.moveTo(laX, atriumY - 25); ctx.lineTo(av === 'concordant' ? lvX : rvX, ventricleY + 25);
-            ctx.stroke();
-
-            // 3. ตรรกะการต่อเส้นเลือดใหญ่ (VA Connection & Relationship)
-            let aoTargetX = 200, paTargetX = 250; // จุดออกของเส้นเลือดด้านบนสุด
-
-            if (vessels === 'd-loop') {
-                aoTargetX = 260; paTargetX = 190;
-            } else if (vessels === 'l-loop') {
-                aoTargetX = 190; paTargetX = 260;
-            }
-
-            // วาดท่อเส้นเลือดใหญ่ตามจุดกำเนิด (Concordance vs Discordance)
-            if (va === 'discordant') {
-                // d-TGA: RV ต่อไป Ao, LV ต่อไป PA
-                drawVessel(rvX, ventricleY - 25, aoTargetX, 50, "#d32f2f", "Aorta (Ao)");
-                drawVessel(lvX, ventricleY - 25, paTargetX, 60, "#1976d2", "Pulmonary Artery (PA)");
+            // ตรรกะตรวจเช็คเงื่อนไขในการสลับรูปภาพ
+            if (situs === 'S' && loop === 'D' && va === 'discordant') {
+                // หากเลือกเป็นเงื่อนไข d-TGA แต่ปัจจุบันเรายังไม่มีรูป d-tga-heart.png
+                // ระบบจะแจ้งเตือนให้รู้ แต่สำหรับก้าวแรกสามารถใช้ระบบเงื่อนไขสลับลิงก์นี้เช็คตรรกะก่อนได้ครับ
+                imgElement.src = "normal-heart.png"; // เปลี่ยนเป็นชื่อไฟล์ d-tga-heart.png เมื่อคุณอัปโหลดในอนาคต
+                msgElement.innerHTML = "<span style='color: #d32f2f; font-weight:bold;'>เคส d-TGA:</span> ดรอปดาวน์เปลี่ยนตรรกะถูกต้องแล้ว (ในอนาคตเมื่อคุณนำรูปเคส d-TGA ไปอัปโหลดตั้งชื่อไฟล์ใน GitHub ระบบจะดึงภาพมาแสดงแทนที่ทันทีครับ)";
             } else {
-                // ปกติ: LV ต่อไป Ao, RV ต่อไป PA
-                drawVessel(lvX, ventricleY - 25, aoTargetX, 50, "#d32f2f", "Aorta (Ao)");
-                drawVessel(rvX, ventricleY - 25, paTargetX, 60, "#1976d2", "Pulmonary Artery (PA)");
+                // หากเป็นค่าอื่นๆ หรือ Normal สมบูรณ์
+                imgElement.src = "normal-heart.png";
+                msgElement.innerHTML = "แสดงโครงสร้างหัวใจปกติ (Normal Anatomy) ตามรูปภาพทางการแพทย์ที่คุณอัปโหลด";
             }
         }
 
-        function drawRoom(x, y, text, bgColor, textColor) {
-            ctx.fillStyle = bgColor;
-            ctx.strokeStyle = textColor;
-            ctx.lineWidth = 3;
-            ctx.beginPath();
-            ctx.arc(x, y, 35, 0, 2 * Math.PI);
-            ctx.fill();
-            ctx.stroke();
-
-            ctx.fillStyle = "#333";
-            ctx.font = "bold 12px Arial";
-            ctx.textAlign = "center";
-            ctx.fillText(text, x, y + 5);
-        }
-
-        function drawVessel(startX, startY, endX, endY, color, label) {
-            ctx.strokeStyle = color;
-            ctx.lineWidth = 12;
-            ctx.lineCap = "round";
-            ctx.beginPath();
-            ctx.moveTo(startX, startY);
-            ctx.quadraticCurveTo((startX+endX)/2, (startY+endY)/2 - 20, endX, endY);
-            ctx.stroke();
-
-            // ป้ายชื่อเส้นเลือด
-            ctx.fillStyle = color;
-            ctx.font = "bold 13px Arial";
-            ctx.fillText(label, endX, endY - 10);
-        }
-
-        // รันครั้งแรกเมื่อโหลดหน้าเว็บ
-        applyPreset('dtga');
+        // รันตั้งต้นให้ทำงานตอนโหลดหน้าเว็บ
+        updateUI();
     </script>
 </body>
 </html>
