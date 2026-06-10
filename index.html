@@ -94,7 +94,7 @@
 
     <div style="text-align: center; margin-bottom: 20px;">
         <h1>Segmental Analysis CHD Simulator</h1>
-        <p>เครื่องมือจำลองแผนภาพบล็อกหัวใจพิการแต่กำเนิดตามหลักสรีรวิทยา</p>
+        <p>เครื่องมือจำลองแผนภาพบล็อกสรีรวิทยาหัวใจพิการแต่กำเนิด (Inflow Top / Outflow Bottom)</p>
     </div>
 
     <div class="container">
@@ -123,15 +123,15 @@
             </div>
 
             <div class="form-group">
-                <label for="av">3. AV Connection (ลิ้นหัวใจ)</label>
+                <label for="av">3. AV Connection (ลิ้นหัวใจกั้นห้อง)</label>
                 <select id="av" onchange="drawHeart()">
-                    <option value="concordant">Concordant (ห้องตรงกันตรงๆ)</option>
-                    <option value="discordant">Discordant (ห้องสลับฝั่งไขว้กัน)</option>
+                    <option value="concordant">Concordant (ห้องบน-ล่างตรงกัน)</option>
+                    <option value="discordant">Discordant (ห้องบน-ล่างสลับไขว้ฝั่ง)</option>
                 </select>
             </div>
 
             <div class="form-group">
-                <label for="va">4. VA Connection (ทางออกเส้นเลือด)</label>
+                <label for="va">4. VA Connection (ทางออกเส้นเลือดใหญ่)</label>
                 <select id="va" onchange="drawHeart()">
                     <option value="concordant">Concordant (LV->Ao, RV->PA) - ปกติ</option>
                     <option value="discordant">Discordant (RV->Ao, LV->PA) - TGA</option>
@@ -141,7 +141,7 @@
             <div class="form-group">
                 <label for="vessels">5. Great Arteries Relationship</label>
                 <select id="vessels" onchange="drawHeart()">
-                    <option value="normal">Normal (Ao อยู่เยื้องหลัง)</option>
+                    <option value="normal">Normal (Ao อยู่เยื้องหลัง/ขวา)</option>
                     <option value="d-loop">D-Malposition (Ao อยู่หน้า/ขวา)</option>
                     <option value="l-loop">L-Malposition (Ao อยู่หน้า/ซ้าย)</option>
                 </select>
@@ -150,7 +150,7 @@
 
         <div class="visual-panel">
             <h2>2. Anatomical Block Diagram</h2>
-            <canvas id="heartCanvas" width="440" height="460"></canvas>
+            <canvas id="heartCanvas" width="440" height="480"></canvas>
             <div class="notation-badge" id="notationDisplay">{S, D, S}</div>
             <div style="margin-top: 10px; font-size: 0.85rem; color: #666; text-align: center;">
                 <span style="color: #ff3333; font-weight: bold;">■ เส้นสีแดง = Systemic (Aorta)</span> | 
@@ -159,7 +159,7 @@
         </div>
     </div>
 
-    <script>
+    <script {nonce}>
         const canvas = document.getElementById('heartCanvas');
         const ctx = canvas.getContext('2d');
 
@@ -193,115 +193,140 @@
 
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-            // 1. กำหนดพิกัดตำแหน่งซ้าย-ขวาของห้องหัวใจตามค่าการจัดวาง
-            // ฝั่งซ้ายของจอภาพ (X=90) และ ฝั่งขวาของจอภาพ (X=230)
+            // ขนาดบล็อกและพิกัดความสูง (ยึดตามโครงสร้าง Inflow บน -> Outflow ล่าง)
+            const blockW = 120;
+            const blockH = 90;
+            const atriumY = 110;     // ห้องบนย้ายขึ้นไปอยู่ด้านบน
+            const ventricleY = 270;  // ห้องล่างย้ายลงมาอยู่ด้านล่าง
+
+            // กำหนดพิกัดแกนนอน (X) สลับฝั่งตามหลักวิเคราะห์โครงสร้าง
             let raX = 90, laX = 230;
             if (situs === 'I') { raX = 230; laX = 90; }
 
             let rvX = 90, lvX = 230;
             if (loop === 'L') { rvX = 230; lvX = 90; }
 
-            const blockW = 120;
-            const blockH = 90;
-            const atriumY = 240;
-            const ventricleY = 120;
+            // 1. วาดท่อรับเลือดเข้าจากด้านบน (Inflow) ลงมาที่ Atria
+            drawInflowTubes(raX, laX, atriumY, blockW);
 
-            // 2. วาดกล่องห้องหัวใจ Atria (ห้องบน อยู่ด้านล่างในไดอะแกรมอ้างอิง)
-            drawAnatomicalBlock(raX, atriumY, blockW, blockH, "RA", "เลือดดำจากร่างกาย", "#e3f2fd", "#1565c0");
-            drawAnatomicalBlock(laX, atriumY, blockW, blockH, "LA", "เลือดแดงจากปอด", "#ffebee", "#c62828");
+            // 2. วาดกล่องห้องหัวใจ Atria (ห้องบน)
+            drawAnatomicalBlock(raX, atriumY, blockW, blockH, "RA", "รับเลือดดำจากร่างกาย", "#e3f2fd", "#1565c0");
+            drawAnatomicalBlock(laX, atriumY, blockW, blockH, "LA", "รับเลือดแดงจากปอด", "#ffebee", "#c62828");
 
-            // 3. วาดกล่องห้องหัวใจ Ventricles (ห้องล่าง อยู่ด้านบนในไดอะแกรมอ้างอิง)
-            drawAnatomicalBlock(rvX, ventricleY, blockW, blockH, "RV", "ส่งไปฟอก/สลับสาย", "#e8f5e9", "#2e7d32");
-            drawAnatomicalBlock(lvX, ventricleY, blockW, blockH, "LV", "ส่งเลี้ยงระบบร่างกาย", "#fffde7", "#f57f17");
+            // 3. วาดกล่องห้องหัวใจ Ventricles (ห้องล่าง)
+            drawAnatomicalBlock(rvX, ventricleY, blockW, blockH, "RV", "ขับเคลื่อนระบบ Pulmonary", "#e8f5e9", "#2e7d32");
+            drawAnatomicalBlock(lvX, ventricleY, blockW, blockH, "LV", "ขับเคลื่อนระบบ Systemic", "#fffde7", "#f57f17");
 
-            // 4. วาดลิ้นหัวใจเชื่อมโยง (AV Connection)
-            drawAVValves(raX, laX, rvX, lvX, atriumY, ventricleY, blockW, av);
+            // 4. วาดลิ้นหัวใจกั้นห้อง (AV Connection) ระหว่าง Atria และ Ventricles
+            drawAVValves(raX, laX, rvX, lvX, atriumY + blockH, ventricleY, blockW, av);
 
-            // 5. วาดเส้นเลือดใหญ่ชี้ขึ้นด้านบน (VA Connection)
-            // กำหนดท่อออกปลายทางด้านบนสุดของ Canvas
-            let aoTopX = 150, paTopX = 290;
-            if (vessels === 'd-loop') { aoTopX = 290; paTopX = 150; }
-            else if (vessels === 'l-loop') { aoTopX = 120; paTopX = 320; }
+            // 5. วาดเส้นเลือดใหญ่ออกจาก Ventricles ดิ่งลงด้านล่างสุด (Outflow)
+            let aoBotX = 230, paBotX = 90; // พิกัดปลายทางด้านล่าง
+            if (vessels === 'd-loop') { aoBotX = 90; paBotX = 230; }
+            else if (vessels === 'l-loop') { aoBotX = 70; paBotX = 250; }
 
             if (va === 'discordant') {
-                // เคส d-TGA: RV ขับเลือดออกทาง Aorta (Ao) | LV ขับเลือดออกทาง Pulmonary Artery (PA)
-                drawVesselTube(rvX + blockW/2, ventricleY, aoTopX, 40, "#ff3333", "AO (Aorta)");
-                drawVesselTube(lvX + blockW/2, ventricleY, paTopX, 40, "#3366ff", "PA (Pulmonary)");
+                // เคส d-TGA สลับสาย: RV แตกกิ่งออกเป็น AO | LV แตกกิ่งออกเป็น PA วิ่งลงล่าง
+                drawOutflowTube(rvX + blockW/2, ventricleY + blockH, aoBotX + blockW/2, 440, "#ff3333", "AO (Aorta)");
+                drawOutflowTube(lvX + blockW/2, ventricleY + blockH, paBotX + blockW/2, 440, "#3366ff", "PA (Pulmonary)");
             } else {
-                // เคส ปกติ: LV -> Ao | RV -> PA
-                drawVesselTube(lvX + blockW/2, ventricleY, aoTopX, 40, "#ff3333", "AO (Aorta)");
-                drawVesselTube(rvX + blockW/2, ventricleY, paTopX, 40, "#3366ff", "PA (Pulmonary)");
+                // เคส ปกติ: LV -> AO | RV -> PA
+                drawOutflowTube(lvX + blockW/2, ventricleY + blockH, aoBotX + blockW/2, 440, "#ff3333", "AO (Aorta)");
+                drawOutflowTube(rvX + blockW/2, ventricleY + blockH, paBotX + blockW/2, 440, "#3366ff", "PA (Pulmonary)");
             }
-
-            // 6. วาดเส้นทางรับเลือดเข้า Atrium (SVC/IVC และ Pulmonary Veins) เป็นท่อชี้ลงล่าง
-            drawVesselTube(raX + blockW/2, atriumY + blockH, raX + blockW/2, 420, "#3366ff", "SVC / IVC");
-            drawVesselTube(laX + blockW/2, atriumY + blockH, laX + blockW/2, 420, "#ff3333", "Pulm Veins");
         }
 
         function drawAnatomicalBlock(x, y, w, h, title, subtitle, bgColor, borderColor) {
-            // วาดตัวกล่องสี่เหลี่ยม
             ctx.fillStyle = bgColor;
             ctx.strokeStyle = borderColor;
             ctx.lineWidth = 4;
             ctx.fillRect(x, y, w, h);
             ctx.strokeRect(x, y, w, h);
 
-            // ข้อความชื่อห้องหัวใจใหญ่ๆ
             ctx.fillStyle = borderColor;
             ctx.font = "bold 22px Arial";
             ctx.textAlign = "center";
             ctx.fillText(title, x + w/2, y + h/2 - 5);
 
-            // คำอธิบายตัวเล็กๆ ด้านล่างชื่อห้อง
             ctx.fillStyle = "#555";
             ctx.font = "10px Arial";
             ctx.fillText(subtitle, x + w/2, y + h/2 + 20);
         }
 
-        function drawAVValves(raX, laX, rvX, lvX, atriumY, ventricleY, blockW, mode) {
+        function drawInflowTubes(raX, laX, atriumY, blockW) {
+            ctx.lineWidth = 14;
+            ctx.lineCap = "square";
+
+            // ท่อ SVC / IVC แยกสองเส้นด้านบน วิ่งเข้าหา RA
+            ctx.strokeStyle = "#3366ff";
+            ctx.beginPath();
+            ctx.moveTo(raX + blockW/3, 40); ctx.lineTo(raX + blockW/3, atriumY);
+            ctx.moveTo(raX + (2*blockW)/3, 40); ctx.lineTo(raX + (2*blockW)/3, atriumY);
+            ctx.stroke();
+
+            // ป้ายกำกับ SVC / IVC
+            ctx.fillStyle = "#3366ff";
+            ctx.font = "bold 11px Arial";
+            ctx.fillText("SVC / IVC", raX + blockW/2, 30);
+
+            // ท่อ Pulmonary Veins แตกกิ่งด้านบน วิ่งเข้าหา LA
+            ctx.strokeStyle = "#ff3333";
+            ctx.beginPath();
+            ctx.moveTo(laX + blockW/4, 40); ctx.lineTo(laX + blockW/2, 75);
+            ctx.moveTo(laX + (3*blockW)/4, 40); ctx.lineTo(laX + blockW/2, 75);
+            ctx.moveTo(laX + blockW/2, 75); ctx.lineTo(laX + blockW/2, atriumY);
+            ctx.stroke();
+
+            // ป้ายกำกับ Pulmonary Veins
+            ctx.fillStyle = "#ff3333";
+            ctx.font = "bold 11px Arial";
+            ctx.fillText("Pulm Veins", laX + blockW/2, 30);
+        }
+
+        function drawAVValves(topX1, topX2, botX1, botX2, topY, botY, blockW, mode) {
             ctx.strokeStyle = "#455a64";
             ctx.lineWidth = 4;
-            ctx.setLineDash([4, 4]); // เส้นประแสดงลิ้นหัวใจกั้นห้อง
+            ctx.setLineDash([5, 5]);
 
             ctx.beginPath();
             if (mode === 'concordant') {
-                // เชื่อมตรงๆ จากกล่องบนลงกล่องล่างที่อยู่ไลน์พิกัดตรงกัน
-                ctx.moveTo(raX + blockW/2, atriumY); ctx.lineTo(raX + blockW/2, ventricleY + 90);
-                ctx.moveTo(laX + blockW/2, atriumY); ctx.lineTo(laX + blockW/2, ventricleY + 90);
+                ctx.moveTo(topX1 + blockW/2, topY); ctx.lineTo(botX1 + blockW/2, botY);
+                ctx.moveTo(topX2 + blockW/2, topY); ctx.lineTo(botX2 + blockW/2, botY);
             } else {
-                // ไขว้กัน (Discordant)
-                ctx.moveTo(raX + blockW/2, atriumY); ctx.lineTo(laX + blockW/2, ventricleY + 90);
-                ctx.moveTo(laX + blockW/2, atriumY); ctx.lineTo(raX + blockW/2, ventricleY + 90);
+                ctx.moveTo(topX1 + blockW/2, topY); ctx.lineTo(botX2 + blockW/2, botY);
+                ctx.moveTo(topX2 + blockW/2, topY); ctx.lineTo(botX1 + blockW/2, botY);
             }
             ctx.stroke();
-            ctx.setLineDash([]); // รีเซ็ตเส้นทึบตามเดิม
+            ctx.setLineDash([]);
         }
 
-        function drawVesselTube(startX, startY, endX, endY, color, label) {
+        function drawOutflowTube(startX, startY, endX, endY, color, label) {
             ctx.strokeStyle = color;
             ctx.lineWidth = 14;
             ctx.lineCap = "square";
             
             ctx.beginPath();
             ctx.moveTo(startX, startY);
-            // ดัดโค้งมุมฉากทางเดินท่อเล็กน้อยเพื่อให้ไม่ทับกันนัวเนีย
-            ctx.bezierCurveTo(startX, (startY + endY)/2, endX, (startY + endY)/2, endX, endY);
+            ctx.bezierCurveTo(startX, (startY + endY)/2, endX, (startY + endY)/2 - 30, endX, endY);
             ctx.stroke();
 
-            // ตัวอักษรกำกับชื่อท่อเส้นเลือด
-            ctx.fillStyle = "#ffffff";
-            ctx.font = "bold 10px Arial";
-            ctx.textAlign = "center";
-            
-            // วาดพื้นหลังกล่องข้อความป้ายชื่อเล็กๆ จะได้อ่านออกง่าย
+            // แตกแขนงหลอดเลือดตอนปลายด้านล่างสุดตามพิมพ์เขียวรูปที่ 2
+            ctx.beginPath();
+            ctx.moveTo(endX, endY); ctx.lineTo(endX - 20, endY + 25);
+            ctx.moveTo(endX, endY); ctx.lineTo(endX + 20, endY + 25);
+            ctx.stroke();
+
+            // กล่องข้อความชื่อป้ายกำกับเส้นเลือด
             ctx.fillStyle = color;
-            ctx.fillRect(endX - 35, endY - 12, 70, 18);
+            ctx.fillRect(endX - 45, endY - 12, 90, 18);
             
             ctx.fillStyle = "#ffffff";
-            ctx.fillText(label, endX, endY);
+            ctx.font = "bold 11px Arial";
+            ctx.textAlign = "center";
+            ctx.fillText(label, endX, endY + 1);
         }
 
-        // โหลดตั้งต้นเมื่อเปิดแอปพลิเคชัน
+        // รันตั้งต้นให้จำลอง d-TGA ตอนเปิดโปรแกรม
         applyPreset('dtga');
     </script>
 </body>
