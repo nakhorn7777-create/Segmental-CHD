@@ -263,16 +263,16 @@
                 document.getElementById('loop').value = 'D';
                 document.getElementById('av').value = 'concordant';
                 document.getElementById('va').value = 'pa_ivs';
-                document.getElementById('vessels').value = 'normal';
+                document.getElementById('vessels').value = 'normal'; // ล็อกให้เป็นสไตล์พิกัด Normal เหมือนกัน
                 document.getElementById('asdCheck').checked = true;
                 document.getElementById('vsdCheck').checked = false;
                 document.getElementById('pdaCheck').checked = true;
-            } else if(type === 'pavsd') { // <-- ซ่อม Bug การเช็คชื่อตัวแปรตรงนี้เรียบร้อยครับ
+            } else if(type === 'pavsd') {
                 document.getElementById('situs').value = 'S';
                 document.getElementById('loop').value = 'D';
                 document.getElementById('av').value = 'concordant';
                 document.getElementById('va').value = 'pa_vsd';
-                document.getElementById('vessels').value = 'd-loop';
+                document.getElementById('vessels').value = 'normal'; // แก้จาก d-loop เป็น normal เพื่อล็อกตำแหน่งท่อให้นิ่งสนิทตามเคส PA/IVS ครับ
                 document.getElementById('asdCheck').checked = false;
                 document.getElementById('vsdCheck').checked = true;
                 document.getElementById('pdaCheck').checked = true;
@@ -307,7 +307,7 @@
             if (loop === 'L') { rvX = 230; lvX = 90; }
 
             // ========================================================
-            // ⚖️ ระบบคำนวณเฉดสีเลือดตามสรีรวิทยา (Hemodynamic Mixing)
+            // ⚖️ ระบบคำนวณเฉดสีเลือดตามสรีรวิทยา
             // ========================================================
             let raBg = "#e3f2fd", raBorder = "#1565c0";
             let laBg = "#ffebee", laBorder = "#c62828";
@@ -330,7 +330,7 @@
             } 
             else if (va === 'pa_vsd') {
                 lvBg = "#e1bee7"; lvBorder = "#4a148c";
-                rvBg = "#e1bee7"; rvBorder = "#4a148c"; // ทะลุกันผ่าน VSD สีผสมร่วมกัน
+                rvBg = "#e1bee7"; rvBorder = "#4a148c"; 
                 aoColor = "#9c27b0";
                 rvText = "เลือดผสมไหลทะลุผ่าน VSD";
                 paColor = hasPDA ? "#9c27b0" : "#78909c";
@@ -361,6 +361,7 @@
             let pdaY = 415;
 
             if (va === 'pa_ivs' || va === 'pa_vsd') {
+                // สำหรับตระกูล PA ทั้งคู่ ลอดใต้เงื่อนไขดึงพิกัดจาก LV ออกท่อระบายขวา (AO) และล็อกปลายทางแยกปอดให้อยู่ตำแหน่งเดียวกันนิ่งๆ
                 drawOutflowTube(lvX + blockW/2, ventricleY + blockH, aoFinalX, 440, aoColor, "AO (Mixed)");
                 drawIsolatedPABranches(paFinalX, 440, paColor, hasPDA ? "PA Branches (Via PDA)" : "PA Branches (No Flow)");
             } 
@@ -410,20 +411,24 @@
 
         function drawSeptalDefect(leftX, rightX, yCoord, blockW, blockH, label) {
             let leftBoxRightEdge = Math.min(leftX, rightX) + blockW; let rightBoxLeftEdge = Math.max(leftX, rightX); let midX = (leftBoxRightEdge + rightBoxLeftEdge) / 2; let midY = yCoord + blockH / 2;
-            ctx.strokeStyle = "#ffa726"; ctx.lineWidth = 12; ctx.beginPath(); ctx.moveTo(leftBoxRightEdge - 15, midY); ctx.lineTo(rightBoxLeftEdge + 15, midY); ctx.stroke();
+            ctx.strokeStyle = "#ffa726"; ctx.lineWidth = 12; ctx.beginPath(); ctx.moveTo(leftBoxRightEdge - 15, midY); ctx.lineTo(rightBoxLeftEdge + 15, midY); stroke();
             ctx.fillStyle = "#ffffff"; ctx.strokeStyle = "#e65100"; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(midX, midY, 10, 0, 2 * Math.PI); ctx.fill(); ctx.stroke();
             ctx.fillStyle = "#e65100"; ctx.font = "bold 9px Arial"; ctx.textAlign = "center"; ctx.fillText(label, midX, midY + 3);
         }
 
         function drawOutflowTube(startX, startY, endX, endY, color, label) {
-            ctx.strokeStyle = color; ctx.lineWidth = 14; ctx.lineCap = "square"; ctx.beginPath(); ctx.moveTo(startX, startY); ctx.bezierCurveTo(startX, (startY + endY)/2, endX, (startY + endY)/2 - 30, endX, endY); ctx.stroke();
+            ctx.strokeStyle = color; ctx.lineWidth = 14; ctx.lineCap = "square"; ctx.beginPath(); ctx.moveTo(startX, startY);
+            ctx.bezierCurveTo(startX, (startY + endY)/2, endX, (startY + endY)/2 - 30, endX, endY);
+            ctx.stroke();
+
             ctx.beginPath(); ctx.moveTo(endX, endY); ctx.lineTo(endX - 20, endY + 25); ctx.moveTo(endX, endY); ctx.lineTo(endX + 20, endY + 25); ctx.stroke();
             ctx.fillStyle = color; ctx.fillRect(endX - 45, endY - 12, 90, 18);
             ctx.fillStyle = "#ffffff"; ctx.font = "bold 11px Arial"; ctx.textAlign = "center"; ctx.fillText(label, endX, endY + 1);
         }
 
         function drawIsolatedPABranches(endX, endY, color, label) {
-            ctx.strokeStyle = color; ctx.lineWidth = 14; ctx.lineCap = "square"; ctx.beginPath(); ctx.moveTo(endX, endY - 35); ctx.lineTo(endX, endY); ctx.stroke();
+            ctx.strokeStyle = color; ctx.lineWidth = 14; ctx.lineCap = "square"; ctx.beginPath(); ctx.moveTo(endX, endY - 35); ctx.lineTo(endX, endY);
+            ctx.stroke();
             ctx.beginPath(); ctx.moveTo(endX, endY); ctx.lineTo(endX - 20, endY + 25); ctx.moveTo(endX, endY); ctx.lineTo(endX + 20, endY + 25); ctx.stroke();
             ctx.fillStyle = color; ctx.fillRect(endX - 55, endY - 12, 110, 18);
             ctx.fillStyle = "#ffffff"; ctx.font = "bold 10px Arial"; ctx.textAlign = "center"; ctx.fillText(label, endX, endY + 1);
