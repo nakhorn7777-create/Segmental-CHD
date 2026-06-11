@@ -129,6 +129,7 @@
             <div class="preset-buttons">
                 <button class="btn btn-secondary" onclick="applyPreset('normal')">Normal</button>
                 <button class="btn btn-primary" onclick="applyPreset('dtga')">d-TGA</button>
+                <button class="btn btn-primary" style="background-color: #0288d1;" onclick="applyPreset('cctga')">ccTGA</button>
                 <button class="btn btn-warning" onclick="applyPreset('dorv')">DORV</button>
                 <button class="btn btn-danger" onclick="applyPreset('paivs')">PA/IVS</button>
                 <button class="btn btn-danger" onclick="applyPreset('pavsd')">PA/VSD</button>
@@ -265,6 +266,13 @@
                 document.getElementById('av').value = 'concordant';
                 document.getElementById('va').value = 'discordant';
                 document.getElementById('vessels').value = 'd-loop';
+            } else if(type === 'cctga') {
+                // 🧠 ตรรกะของระบบวิเคราะห์เคส ccTGA (l-TGA) แท้จริงทางการแพทย์
+                document.getElementById('situs').value = 'S';
+                document.getElementById('loop').value = 'L';          // สลับห้องล่างเป็น L-Loop
+                document.getElementById('av').value = 'discordant';    // บังคับ AV Discordance (RA->LV, LA->RV)
+                document.getElementById('va').value = 'discordant';    // บังคับ VA Discordance (RV->Ao, LV->PA)
+                document.getElementById('vessels').value = 'l-loop';   // ความสัมพันธ์เส้นเลือดแบบ L-Loop Malposition
             } else if(type === 'dorv') {
                 document.getElementById('situs').value = 'S';
                 document.getElementById('loop').value = 'D';
@@ -289,7 +297,6 @@
                 document.getElementById('vsdCheck').checked = true;
                 document.getElementById('pdaCheck').checked = true;
             } else if(type === 'tof_case') {
-                // เคส TOF แท้จริงตามมาตรฐานทางการแพทย์
                 document.getElementById('situs').value = 'S';
                 document.getElementById('loop').value = 'D';
                 document.getElementById('av').value = 'concordant';
@@ -326,11 +333,12 @@
             let raX = 90, laX = 230;
             if (situs === 'I') { raX = 230; laX = 90; }
 
+            // สลับพิกัดหน้ากล่องห้องล่างตามตรรกะ Loop (สเตปนี้จะส่งผลดีกับเคส ccTGA ทันทีเมื่อ Loop เป็น L)
             let rvX = 90, lvX = 230;
             if (loop === 'L') { rvX = 230; lvX = 90; }
 
             // ========================================================
-            // ⚖️ ระบบคำนวณเฉดสีเลือดตามสรีรวิทยา
+            // ⚖️ ระบบคำนวณเฉดสีเลือดตามสรีรวิทยา (Hemodynamics)
             // ========================================================
             let raBg = "#e3f2fd", raBorder = "#1565c0";
             let laBg = "#ffebee", laBorder = "#c62828";
@@ -358,6 +366,13 @@
                 rvText = "เลือดผสมไหลทะลุผ่าน VSD";
                 paColor = hasPDA ? "#9c27b0" : "#78909c";
             }
+            else if (av === 'discordant' && va === 'discordant' && loop === 'L') {
+                // 🩺 เฉพาะเคส ccTGA: ห้องสลับฝั่งแต่ทิศทางเลือดสรีรวิทยาปกติ (Corrected)
+                // RV มาอยู่ฝั่งซ้ายของจอภาพคอยรับเลือดแดงจาก LA ไปหา AO ตัว AO จึงเป็นสีแดงปกติ
+                // LV มาอยู่ฝั่งขวาของจอภาพคอยรับเลือดดำจาก RA ไปหา PA ตัว PA จึงเป็นสีน้ำเงินปกติ
+                rvText = "RV (Systemic RV ความดันสูง)";
+                lvBg = "#ffebee"; lvBorder = "#c62828";
+            }
 
             // ========================================================
             // 🎨 เริ่มกระบวนการวาดส่วนประกอบ
@@ -375,9 +390,10 @@
             if (hasASD) drawSeptalDefect(raX, laX, atriumY, blockW, blockH, "ASD");
             if (hasVSD) drawSeptalDefect(rvX, lvX, ventricleY, blockW, blockH, "VSD");
 
+            // 📐 คำนวณพิกัดทางออกหลอดเลือดใหญ่ด้านล่างสุด
             let aoBotX = 230, paBotX = 90; 
             if (vessels === 'd-loop') { aoBotX = 90; paBotX = 230; }
-            else if (vessels === 'l-loop') { aoBotX = 70; paBotX = 250; }
+            else if (vessels === 'l-loop') { aoBotX = 70; paBotX = 250; } // ดึงขั้วเฉียงหลบไปซ้ายตามหลัก L-Loop
 
             let aoFinalX = aoBotX + blockW / 2;
             let paFinalX = paBotX + blockW / 2;
@@ -398,21 +414,19 @@
                 drawOutflowTube(paRootX, ventricleY + blockH, paFinalX, 440, paColor, "PA (Mixed)");
             } 
             else if (va === 'discordant') {
+                // สำหรับทั้ง d-TGA และ ccTGA ขั้วจะสลับออกจาก Ventricle ไขว้กัน
                 aoRootX = rvX + blockW/2;
                 paRootX = lvX + blockW/2;
-                drawOutflowTube(aoRootX, ventricleY + blockH, aoFinalX, 440, "#ff3333", "AO (Aorta)");
-                drawOutflowTube(paRootX, ventricleY + blockH, paFinalX, 440, "#3366ff", "PA (Pulmonary)");
+                drawOutflowTube(aoRootX, ventricleY + blockH, aoFinalX, 440, aoColor, "AO");
+                drawOutflowTube(paRootX, ventricleY + blockH, paFinalX, 440, paColor, "PA");
             } 
             else {
                 aoRootX = lvX + blockW/2;
                 paRootX = rvX + blockW/2;
-                drawOutflowTube(aoRootX, ventricleY + blockH, aoFinalX, 440, "#ff3333", "AO (Aorta)");
-                drawOutflowTube(paRootX, ventricleY + blockH, paFinalX, 440, "#3366ff", "PA (Pulmonary)");
+                drawOutflowTube(aoRootX, ventricleY + blockH, aoFinalX, 440, aoColor, "AO");
+                drawOutflowTube(paRootX, ventricleY + blockH, paFinalX, 440, paColor, "PA");
             }
 
-            // ========================================================
-            // 🛑 1. ปรับตำแหน่งตัวหนังสือขยับมาทางขวาของวงกลมตีบ (PS / AS)
-            // ========================================================
             if (hasPS && va !== 'pa_ivs' && va !== 'pa_vsd') {
                 drawStenosisCircle(paRootX, paRootY + 20, "PS");
             }
@@ -443,9 +457,11 @@
         function drawAVValves(topX1, topX2, botX1, botX2, topY, botY, blockW, mode) {
             ctx.strokeStyle = "#455a64"; ctx.lineWidth = 4; ctx.setLineDash([5, 5]); ctx.beginPath();
             if (mode === 'concordant') {
-                ctx.moveTo(topX1 + blockW/2, topY); ctx.lineTo(botX1 + blockW/2, botY); ctx.moveTo(topX2 + blockW/2, topY); ctx.lineTo(botX2 + blockW/2, botY);
+                ctx.moveTo(topX1 + blockW/2, topY); ctx.lineTo(botX1 + blockW/2, botY);
+                ctx.moveTo(topX2 + blockW/2, topY); ctx.lineTo(botX2 + blockW/2, botY);
             } else {
-                ctx.moveTo(topX1 + blockW/2, topY); ctx.lineTo(botX2 + blockW/2, botY); ctx.moveTo(topX2 + blockW/2, topY); ctx.lineTo(botX1 + blockW/2, botY);
+                ctx.moveTo(topX1 + blockW/2, topY); ctx.lineTo(botX2 + blockW/2, botY);
+                ctx.moveTo(topX2 + blockW/2, topY); ctx.lineTo(botX1 + blockW/2, botY);
             }
             ctx.stroke(); ctx.setLineDash([]);
         }
@@ -457,29 +473,11 @@
             ctx.fillStyle = "#e65100"; ctx.font = "bold 9px Arial"; ctx.textAlign = "center"; ctx.fillText(label, midX, midY + 3);
         }
 
-        // 🛠️ ฟังก์ชันวาดสัญลักษณ์และปรับการวางตัวหนังสือเยื้องไปด้านขวาขนานตัววงกลม
         function drawStenosisCircle(x, y, label) {
             ctx.save();
-            ctx.fillStyle = "#ffffff";
-            ctx.strokeStyle = "#d84315";
-            ctx.lineWidth = 3;
-            ctx.beginPath();
-            ctx.arc(x, y, 11, 0, 2 * Math.PI);
-            ctx.fill();
-            ctx.stroke();
-
-            ctx.strokeStyle = "#d84315";
-            ctx.lineWidth = 2;
-            ctx.beginPath();
-            ctx.moveTo(x - 7, y + 7);
-            ctx.lineTo(x + 7, y - 7);
-            ctx.stroke();
-
-            // เปลี่ยนพิกัด: ขยับแกน X มาทางขวา (+22) และปรับ Y ให้อยู่กึ่งกลางระนาบเดียวกับวงกลม (+4) อ่านง่ายสุดๆ ครับ
-            ctx.fillStyle = "#c62828";
-            ctx.font = "bold 13px Arial";
-            ctx.textAlign = "left"; // ปรับชิดซ้ายเพื่อให้เขียนตัวหนังสือยืดไปทางขวาพื้นที่สีขาว
-            ctx.fillText(label, x + 22, y + 4); 
+            ctx.fillStyle = "#ffffff"; ctx.strokeStyle = "#d84315"; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(x, y, 11, 0, 2 * Math.PI); ctx.fill(); ctx.stroke();
+            ctx.strokeStyle = "#d84315"; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(x - 7, y + 7); ctx.lineTo(x + 7, y - 7); ctx.stroke();
+            ctx.fillStyle = "#c62828"; ctx.font = "bold 13px Arial"; ctx.textAlign = "left"; ctx.fillText(label, x + 22, y + 4); 
             ctx.restore();
         }
 
@@ -494,7 +492,7 @@
 
         function drawIsolatedPABranches(endX, endY, color, label) {
             ctx.strokeStyle = color; ctx.lineWidth = 14; ctx.lineCap = "square"; ctx.beginPath(); ctx.moveTo(endX, endY - 35); ctx.lineTo(endX, endY); ctx.stroke();
-            ctx.beginPath(); ctx.moveTo(endX, endY); ctx.lineTo(endX - 20, endY + 25); ctx.moveTo(endX, endY); ctx.lineTo(endX + 20, endY + 25); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(endX, endY); ctx.lineTo(endX - 20, endY + 25); ctx.moveTo(endX, endY); ctx.lineTo(endX + 20, endY + 25); stroke();
             ctx.fillStyle = color; ctx.fillRect(endX - 55, endY - 12, 110, 18);
             ctx.fillStyle = "#ffffff"; ctx.font = "bold 10px Arial"; ctx.textAlign = "center"; ctx.fillText(label, endX, endY + 1);
         }
