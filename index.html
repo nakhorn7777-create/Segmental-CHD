@@ -263,7 +263,7 @@
                 document.getElementById('loop').value = 'D';
                 document.getElementById('av').value = 'concordant';
                 document.getElementById('va').value = 'pa_ivs';
-                document.getElementById('vessels').value = 'normal'; // ล็อกให้เป็นสไตล์พิกัด Normal เหมือนกัน
+                document.getElementById('vessels').value = 'normal';
                 document.getElementById('asdCheck').checked = true;
                 document.getElementById('vsdCheck').checked = false;
                 document.getElementById('pdaCheck').checked = true;
@@ -272,7 +272,7 @@
                 document.getElementById('loop').value = 'D';
                 document.getElementById('av').value = 'concordant';
                 document.getElementById('va').value = 'pa_vsd';
-                document.getElementById('vessels').value = 'normal'; // แก้จาก d-loop เป็น normal เพื่อล็อกตำแหน่งท่อให้นิ่งสนิทตามเคส PA/IVS ครับ
+                document.getElementById('vessels').value = 'normal';
                 document.getElementById('asdCheck').checked = false;
                 document.getElementById('vsdCheck').checked = true;
                 document.getElementById('pdaCheck').checked = true;
@@ -361,14 +361,14 @@
             let pdaY = 415;
 
             if (va === 'pa_ivs' || va === 'pa_vsd') {
-                // สำหรับตระกูล PA ทั้งคู่ ลอดใต้เงื่อนไขดึงพิกัดจาก LV ออกท่อระบายขวา (AO) และล็อกปลายทางแยกปอดให้อยู่ตำแหน่งเดียวกันนิ่งๆ
                 drawOutflowTube(lvX + blockW/2, ventricleY + blockH, aoFinalX, 440, aoColor, "AO (Mixed)");
                 drawIsolatedPABranches(paFinalX, 440, paColor, hasPDA ? "PA Branches (Via PDA)" : "PA Branches (No Flow)");
             } 
             else if (va === 'dorv') {
+                // ปรับแต่งพิกัดทางออกเล็กน้อยให้เยื้องจากกึ่งกลางห้อง (หลบมุมชนรูรั่ว VSD)
                 let rvCenter = rvX + blockW / 2;
-                drawOutflowTube(rvCenter - 20, ventricleY + blockH, aoFinalX, 440, aoColor, "AO (Mixed)");
-                drawOutflowTube(rvCenter + 20, ventricleY + blockH, paFinalX, 440, paColor, "PA (Mixed)");
+                drawOutflowTube(rvCenter - 25, ventricleY + blockH, aoFinalX, 440, aoColor, "AO (Mixed)");
+                drawOutflowTube(rvCenter + 25, ventricleY + blockH, paFinalX, 440, paColor, "PA (Mixed)");
             } 
             else if (va === 'discordant') {
                 drawOutflowTube(rvX + blockW/2, ventricleY + blockH, aoFinalX, 440, "#ff3333", "AO (Aorta)");
@@ -411,7 +411,7 @@
 
         function drawSeptalDefect(leftX, rightX, yCoord, blockW, blockH, label) {
             let leftBoxRightEdge = Math.min(leftX, rightX) + blockW; let rightBoxLeftEdge = Math.max(leftX, rightX); let midX = (leftBoxRightEdge + rightBoxLeftEdge) / 2; let midY = yCoord + blockH / 2;
-            ctx.strokeStyle = "#ffa726"; ctx.lineWidth = 12; ctx.beginPath(); ctx.moveTo(leftBoxRightEdge - 15, midY); ctx.lineTo(rightBoxLeftEdge + 15, midY); stroke();
+            ctx.strokeStyle = "#ffa726"; ctx.lineWidth = 12; ctx.beginPath(); ctx.moveTo(leftBoxRightEdge - 15, midY); ctx.lineTo(rightBoxLeftEdge + 15, midY); ctx.stroke(); // <-- ซ่อมแซมเติม ctx. เรียบร้อยแล้วครับ
             ctx.fillStyle = "#ffffff"; ctx.strokeStyle = "#e65100"; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(midX, midY, 10, 0, 2 * Math.PI); ctx.fill(); ctx.stroke();
             ctx.fillStyle = "#e65100"; ctx.font = "bold 9px Arial"; ctx.textAlign = "center"; ctx.fillText(label, midX, midY + 3);
         }
@@ -434,6 +434,14 @@
             ctx.fillStyle = "#ffffff"; ctx.font = "bold 10px Arial"; ctx.textAlign = "center"; ctx.fillText(label, endX, endY + 1);
         }
 
+        function drawDarkShunt(aoX, paX, y) {
+            let startX = Math.min(aoX, paX); let endX = Math.max(aoX, paX); let midX = (startX + endX) / 2;
+            ctx.strokeStyle = "#ffa726"; ctx.lineWidth = 10; ctx.beginPath(); ctx.moveTo(startX, y); ctx.lineTo(endX, y); ctx.stroke();
+            ctx.fillStyle = "#ffffff"; ctx.strokeStyle = "#e65100"; ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(midX, y, 16, 8, 0, 0, 2 * Math.PI); ctx.fill(); ctx.stroke();
+            ctx.fillStyle = "#e65100"; ctx.font = "bold 8px Arial"; ctx.textAlign = "center"; ctx.fillText("PDA", midX, y + 3);
+        }
+        
+        // ฟังก์ชันเบื้องหลังสำหรับรันสะพานเชื่อม PDA
         function drawPDAShunt(aoX, paX, y) {
             let startX = Math.min(aoX, paX); let endX = Math.max(aoX, paX); let midX = (startX + endX) / 2;
             ctx.strokeStyle = "#ffa726"; ctx.lineWidth = 10; ctx.beginPath(); ctx.moveTo(startX, y); ctx.lineTo(endX, y); ctx.stroke();
