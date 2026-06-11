@@ -180,10 +180,16 @@
                         <span>Atrial Septal Defect (ASD)</span>
                     </label>
                 </div>
-                <div class="checkbox-group" style="margin-top: 10px;">
+                <div class="checkbox-group">
                     <label class="checkbox-label">
                         <input type="checkbox" id="vsdCheck" onchange="drawHeart()">
                         <span>Ventricular Septal Defect (VSD)</span>
+                    </label>
+                </div>
+                <div class="checkbox-group">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="pdaCheck" onchange="drawHeart()">
+                        <span>Patent Ductus Arteriosus (PDA)</span>
                     </label>
                 </div>
             </div>
@@ -214,6 +220,7 @@
                 document.getElementById('vessels').value = 'normal';
                 document.getElementById('asdCheck').checked = false;
                 document.getElementById('vsdCheck').checked = false;
+                document.getElementById('pdaCheck').checked = false;
             } else if(type === 'dtga') {
                 document.getElementById('situs').value = 'S';
                 document.getElementById('loop').value = 'D';
@@ -222,6 +229,7 @@
                 document.getElementById('vessels').value = 'd-loop';
                 document.getElementById('asdCheck').checked = false;
                 document.getElementById('vsdCheck').checked = false;
+                document.getElementById('pdaCheck').checked = false;
             } else if(type === 'dorv') {
                 document.getElementById('situs').value = 'S';
                 document.getElementById('loop').value = 'D';
@@ -230,6 +238,7 @@
                 document.getElementById('vessels').value = 'd-loop';
                 document.getElementById('asdCheck').checked = false;
                 document.getElementById('vsdCheck').checked = true;
+                document.getElementById('pdaCheck').checked = false;
             }
             drawHeart();
         }
@@ -242,6 +251,7 @@
             const vessels = document.getElementById('vessels').value;
             const hasASD = document.getElementById('asdCheck').checked;
             const hasVSD = document.getElementById('vsdCheck').checked;
+            const hasPDA = document.getElementById('pdaCheck').checked;
 
             let vaSign = va === 'concordant' ? 'S' : (va === 'discordant' ? 'D' : 'DORV');
             document.getElementById('notationDisplay').innerText = `{${situs}, ${loop}, ${vaSign}}`;
@@ -274,13 +284,12 @@
                 rvText = "เลือดผสม (Mixed Blood)";
             }
             drawAnatomicalBlock(rvX, ventricleY, blockW, blockH, "RV", rvText, rvBg, rvBorder); 
-            // รักษาการแก้ไขสีของคุณนครไว้: LV ปรับเป็นสีแดง/ขอบแดงตาม LA เพื่อความง่ายในการอธิบายเรื่องเลือดแดง
             drawAnatomicalBlock(lvX, ventricleY, blockW, blockH, "LV", "ขับเคลื่อนระบบ Systemic", "#ffebee", "#c62828");
 
             // 4. วาดลิ้นหัวใจกั้นห้อง (AV Connection)
             drawAVValves(raX, laX, rvX, lvX, atriumY + blockH, ventricleY, blockW, av);
 
-            // 5. วาดรูรั่วเชื่อมพยาธิสภาพ (Shunts)
+            // 5. วาดรูรั่วกั้นห้องหัวใจ (ASD / VSD)
             if (hasASD) {
                 drawSeptalDefect(raX, laX, atriumY, blockW, blockH, "ASD");
             }
@@ -288,7 +297,7 @@
                 drawSeptalDefect(rvX, lvX, ventricleY, blockW, blockH, "VSD");
             }
 
-            // 6. วาดเส้นเลือดใหญ่ออกจาก Ventricles ดิ่งลงด้านล่างสุด (Outflow)
+            // 6. วาดเส้นเลือดใหญ่ดิ่งลงด้านล่างสุด (Outflow)
             let aoBotX = 230, paBotX = 90; 
             if (vessels === 'd-loop') { aoBotX = 90; paBotX = 230; }
             else if (vessels === 'l-loop') { aoBotX = 70; paBotX = 250; }
@@ -296,18 +305,28 @@
             let aoColor = "#ff3333";
             let paColor = "#3366ff";
 
+            // พิกัดจุดปลายของท่อทั้งสองเพื่อใช้ลากเชื่อม PDA
+            let aoFinalX = aoBotX + blockW / 2;
+            let paFinalX = paBotX + blockW / 2;
+            let pdaY = 415; // พิกัดความสูงของจุดเชื่อม PDA (ก่อนถึงปลายแตกแขนง)
+
             if (va === 'dorv') {
                 aoColor = "#9c27b0";
                 paColor = "#9c27b0";
                 let rvCenter = rvX + blockW / 2;
-                drawOutflowTube(rvCenter - 20, ventricleY + blockH, aoBotX + blockW/2, 440, aoColor, "AO (Mixed)");
-                drawOutflowTube(rvCenter + 20, ventricleY + blockH, paBotX + blockW/2, 440, paColor, "PA (Mixed)");
+                drawOutflowTube(rvCenter - 20, ventricleY + blockH, aoFinalX, 440, aoColor, "AO (Mixed)");
+                drawOutflowTube(rvCenter + 20, ventricleY + blockH, paFinalX, 440, paColor, "PA (Mixed)");
             } else if (va === 'discordant') {
-                drawOutflowTube(rvX + blockW/2, ventricleY + blockH, aoBotX + blockW/2, 440, aoColor, "AO (Aorta)");
-                drawOutflowTube(lvX + blockW/2, ventricleY + blockH, paBotX + blockW/2, 440, paColor, "PA (Pulmonary)");
+                drawOutflowTube(rvX + blockW/2, ventricleY + blockH, aoFinalX, 440, aoColor, "AO (Aorta)");
+                drawOutflowTube(lvX + blockW/2, ventricleY + blockH, paFinalX, 440, paColor, "PA (Pulmonary)");
             } else {
-                drawOutflowTube(lvX + blockW/2, ventricleY + blockH, aoBotX + blockW/2, 440, aoColor, "AO (Aorta)");
-                drawOutflowTube(rvX + blockW/2, ventricleY + blockH, paBotX + blockW/2, 440, paColor, "PA (Pulmonary)");
+                drawOutflowTube(lvX + blockW/2, ventricleY + blockH, aoFinalX, 440, aoColor, "AO (Aorta)");
+                drawOutflowTube(rvX + blockW/2, ventricleY + blockH, paFinalX, 440, paColor, "PA (Pulmonary)");
+            }
+
+            // 7. วาด Shunt ท่อต่อลัดวงจร PDA (เชื่อมระหว่างท่อ AO และ PA)
+            if (hasPDA) {
+                drawPDAShunt(aoFinalX, paFinalX, pdaY);
             }
         }
 
@@ -373,14 +392,12 @@
             ctx.setLineDash([]);
         }
 
-        // ปรับปรุงฟังก์ชันวาดรูรั่วให้ฉลาดขึ้น (รองรับทั้งการเป็น ASD และ VSD ตามพิกัดชั้นห้อง)
         function drawSeptalDefect(leftX, rightX, yCoord, blockW, blockH, label) {
             let leftBoxRightEdge = Math.min(leftX, rightX) + blockW;
             let rightBoxLeftEdge = Math.max(leftX, rightX);
             let midX = (leftBoxRightEdge + rightBoxLeftEdge) / 2;
             let midY = yCoord + blockH / 2;
 
-            // เส้นเชื่อมผ่านกั้นห้อง
             ctx.strokeStyle = "#ffa726"; 
             ctx.lineWidth = 12;
             ctx.beginPath();
@@ -388,7 +405,6 @@
             ctx.lineTo(rightBoxLeftEdge + 15, midY);
             ctx.stroke();
 
-            // วงกลมรูรั่ว
             ctx.fillStyle = "#ffffff";
             ctx.strokeStyle = "#e65100";
             ctx.lineWidth = 3;
@@ -397,11 +413,39 @@
             ctx.fill();
             ctx.stroke();
 
-            // ข้อความกำกับรูรั่ว
             ctx.fillStyle = "#e65100";
             ctx.font = "bold 9px Arial";
             ctx.textAlign = "center";
             ctx.fillText(label, midX, midY + 3);
+        }
+
+        // ฟังก์ชันวาดท่อลัดวงจรระหว่างคู่หลอดเลือดแดงใหญ่ (PDA)
+        function drawPDAShunt(aoX, paX, y) {
+            let startX = Math.min(aoX, paX);
+            let endX = Math.max(aoX, paX);
+            let midX = (startX + endX) / 2;
+
+            // วาดท่อเชื่อมแนวนอนระหว่างเส้นเลือดคู่
+            ctx.strokeStyle = "#ffa726"; // ใช้สีส้มสัญลักษณ์ของ Shunt ตัวจำลอง
+            ctx.lineWidth = 10;
+            ctx.beginPath();
+            ctx.moveTo(startX, y);
+            ctx.lineTo(endX, y);
+            ctx.stroke();
+
+            // วาดป้ายสัญลักษณ์ทรงรีระบุว่าตรงนี้คือท่อ PDA
+            ctx.fillStyle = "#ffffff";
+            ctx.strokeStyle = "#e65100";
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.ellipse(midX, y, 16, 8, 0, 0, 2 * Math.PI);
+            ctx.fill();
+            ctx.stroke();
+
+            ctx.fillStyle = "#e65100";
+            ctx.font = "bold 8px Arial";
+            ctx.textAlign = "center";
+            ctx.fillText("PDA", midX, y + 3);
         }
 
         function drawOutflowTube(startX, startY, endX, endY, color, label) {
