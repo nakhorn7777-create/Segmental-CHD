@@ -45,12 +45,18 @@
         .form-group {
             margin-bottom: 15px;
         }
-        .checkbox-group {
-            margin-bottom: 15px;
-            padding: 10px;
+        .checkbox-container {
             background-color: #f8f9fa;
-            border-radius: 6px;
+            padding: 12px;
+            border-radius: 8px;
             border-left: 4px solid #ffa726;
+            margin-bottom: 15px;
+        }
+        .checkbox-group {
+            margin-bottom: 10px;
+        }
+        .checkbox-group:last-child {
+            margin-bottom: 0;
         }
         label {
             display: block;
@@ -167,11 +173,19 @@
             </div>
 
             <h3>2. Associated Defects (Shunts)</h3>
-            <div class="checkbox-group">
-                <label class="checkbox-label">
-                    <input type="checkbox" id="vsdCheck" onchange="drawHeart()">
-                    <span>Ventricular Septal Defect (VSD)</span>
-                </label>
+            <div class="checkbox-container">
+                <div class="checkbox-group">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="asdCheck" onchange="drawHeart()">
+                        <span>Atrial Septal Defect (ASD)</span>
+                    </label>
+                </div>
+                <div class="checkbox-group" style="margin-top: 10px;">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="vsdCheck" onchange="drawHeart()">
+                        <span>Ventricular Septal Defect (VSD)</span>
+                    </label>
+                </div>
             </div>
         </div>
 
@@ -198,6 +212,7 @@
                 document.getElementById('av').value = 'concordant';
                 document.getElementById('va').value = 'concordant';
                 document.getElementById('vessels').value = 'normal';
+                document.getElementById('asdCheck').checked = false;
                 document.getElementById('vsdCheck').checked = false;
             } else if(type === 'dtga') {
                 document.getElementById('situs').value = 'S';
@@ -205,6 +220,7 @@
                 document.getElementById('av').value = 'concordant';
                 document.getElementById('va').value = 'discordant';
                 document.getElementById('vessels').value = 'd-loop';
+                document.getElementById('asdCheck').checked = false;
                 document.getElementById('vsdCheck').checked = false;
             } else if(type === 'dorv') {
                 document.getElementById('situs').value = 'S';
@@ -212,7 +228,8 @@
                 document.getElementById('av').value = 'concordant';
                 document.getElementById('va').value = 'dorv';
                 document.getElementById('vessels').value = 'd-loop';
-                document.getElementById('vsdCheck').checked = true; // ไฟต์บังคับของ DORV มักมี VSD ร่วมด้วย
+                document.getElementById('asdCheck').checked = false;
+                document.getElementById('vsdCheck').checked = true;
             }
             drawHeart();
         }
@@ -223,9 +240,9 @@
             const av = document.getElementById('av').value;
             const va = document.getElementById('va').value;
             const vessels = document.getElementById('vessels').value;
+            const hasASD = document.getElementById('asdCheck').checked;
             const hasVSD = document.getElementById('vsdCheck').checked;
 
-            // อัปเดตตัวย่อสากลทางการแพทย์
             let vaSign = va === 'concordant' ? 'S' : (va === 'discordant' ? 'D' : 'DORV');
             document.getElementById('notationDisplay').innerText = `{${situs}, ${loop}, ${vaSign}}`;
 
@@ -250,47 +267,45 @@
             drawAnatomicalBlock(laX, atriumY, blockW, blockH, "LA", "รับเลือดแดงจากปอด", "#ffebee", "#c62828");
 
             // 3. วาดกล่องห้องหัวใจ Ventricles (ห้องล่าง)
-            // ถ้าเป็น DORV เลือดในห้อง RV จะเป็นเลือดผสม (Mixed Blood) ปรับสีพื้นหลังให้ออกโทนม่วง/ฟ้าอมม่วง
             let rvBg = "#bbdefb", rvBorder = "#0d47a1", rvText = "ขับเคลื่อนระบบ Pulmonary";
             if (va === 'dorv') {
-                rvBg = "#e1bee7"; // สีม่วงอ่อนแสดงสภาวะเลือดผสมภายในห้อง
+                rvBg = "#e1bee7"; 
                 rvBorder = "#4a148c";
                 rvText = "เลือดผสม (Mixed Blood)";
             }
             drawAnatomicalBlock(rvX, ventricleY, blockW, blockH, "RV", rvText, rvBg, rvBorder); 
+            // รักษาการแก้ไขสีของคุณนครไว้: LV ปรับเป็นสีแดง/ขอบแดงตาม LA เพื่อความง่ายในการอธิบายเรื่องเลือดแดง
             drawAnatomicalBlock(lvX, ventricleY, blockW, blockH, "LV", "ขับเคลื่อนระบบ Systemic", "#ffebee", "#c62828");
 
             // 4. วาดลิ้นหัวใจกั้นห้อง (AV Connection)
             drawAVValves(raX, laX, rvX, lvX, atriumY + blockH, ventricleY, blockW, av);
 
-            // 5. วาดรูรั่วและท่อทางเดิน VSD เชื่อมต่อระหว่างห้อง LV กับ RV
+            // 5. วาดรูรั่วเชื่อมพยาธิสภาพ (Shunts)
+            if (hasASD) {
+                drawSeptalDefect(raX, laX, atriumY, blockW, blockH, "ASD");
+            }
             if (hasVSD) {
-                drawVSDShunt(rvX, lvX, ventricleY, blockW, blockH);
+                drawSeptalDefect(rvX, lvX, ventricleY, blockW, blockH, "VSD");
             }
 
-            // 6. วาดเส้นเลือดใหญ่ออกจาก Ventricles ดิ่งลงด้านล่างสุด (Outflow) พร้อมคำนวณสีสรีรวิทยา
+            // 6. วาดเส้นเลือดใหญ่ออกจาก Ventricles ดิ่งลงด้านล่างสุด (Outflow)
             let aoBotX = 230, paBotX = 90; 
             if (vessels === 'd-loop') { aoBotX = 90; paBotX = 230; }
             else if (vessels === 'l-loop') { aoBotX = 70; paBotX = 250; }
 
-            // กำหนดสีตั้งต้น (ปกติ: AO = แดง, PA = น้ำเงิน)
             let aoColor = "#ff3333";
             let paColor = "#3366ff";
 
             if (va === 'dorv') {
-                // ปรับเงื่อนไขที่ 1: เปลี่ยนสี AO และ PA เป็นสีม่วงสากล (#9c27b0) เนื่องจากดึงเลือดผสมจาก RV ไปใช้งานทั้งคู่
                 aoColor = "#9c27b0";
                 paColor = "#9c27b0";
-
                 let rvCenter = rvX + blockW / 2;
                 drawOutflowTube(rvCenter - 20, ventricleY + blockH, aoBotX + blockW/2, 440, aoColor, "AO (Mixed)");
                 drawOutflowTube(rvCenter + 20, ventricleY + blockH, paBotX + blockW/2, 440, paColor, "PA (Mixed)");
             } else if (va === 'discordant') {
-                // เคส d-TGA สลับสาย: RV -> AO | LV -> PA
                 drawOutflowTube(rvX + blockW/2, ventricleY + blockH, aoBotX + blockW/2, 440, aoColor, "AO (Aorta)");
                 drawOutflowTube(lvX + blockW/2, ventricleY + blockH, paBotX + blockW/2, 440, paColor, "PA (Pulmonary)");
             } else {
-                // เคส ปกติ: LV -> AO | RV -> PA
                 drawOutflowTube(lvX + blockW/2, ventricleY + blockH, aoBotX + blockW/2, 440, aoColor, "AO (Aorta)");
                 drawOutflowTube(rvX + blockW/2, ventricleY + blockH, paBotX + blockW/2, 440, paColor, "PA (Pulmonary)");
             }
@@ -358,22 +373,22 @@
             ctx.setLineDash([]);
         }
 
-        function drawVSDShunt(rvX, lvX, ventricleY, blockW, blockH) {
-            // กำหนดจุดตรงกลางระหว่างขอบของสองห้อง Ventricles
-            let leftBoxRightEdge = Math.min(rvX, lvX) + blockW;
-            let rightBoxLeftEdge = Math.max(rvX, lvX);
+        // ปรับปรุงฟังก์ชันวาดรูรั่วให้ฉลาดขึ้น (รองรับทั้งการเป็น ASD และ VSD ตามพิกัดชั้นห้อง)
+        function drawSeptalDefect(leftX, rightX, yCoord, blockW, blockH, label) {
+            let leftBoxRightEdge = Math.min(leftX, rightX) + blockW;
+            let rightBoxLeftEdge = Math.max(leftX, rightX);
             let midX = (leftBoxRightEdge + rightBoxLeftEdge) / 2;
-            let midY = ventricleY + blockH / 2;
+            let midY = yCoord + blockH / 2;
 
-            // วาดเส้นท่อเชื่อมทางเดินเลือดทะลุผนังห้อง (Shunt Path)
-            ctx.strokeStyle = "#ffa726"; // สีส้มเด่นชัดแสดงพยาธิสภาพ VSD
+            // เส้นเชื่อมผ่านกั้นห้อง
+            ctx.strokeStyle = "#ffa726"; 
             ctx.lineWidth = 12;
             ctx.beginPath();
             ctx.moveTo(leftBoxRightEdge - 15, midY);
             ctx.lineTo(rightBoxLeftEdge + 15, midY);
             ctx.stroke();
 
-            // วาดวงกลมสัญลักษณ์รูรั่วตรงกลางผนัง (Septum Defect Hole)
+            // วงกลมรูรั่ว
             ctx.fillStyle = "#ffffff";
             ctx.strokeStyle = "#e65100";
             ctx.lineWidth = 3;
@@ -382,11 +397,11 @@
             ctx.fill();
             ctx.stroke();
 
-            // พิมพ์ตัวอักษรกำกับ VSD
+            // ข้อความกำกับรูรั่ว
             ctx.fillStyle = "#e65100";
-            ctx.font = "bold 10px Arial";
+            ctx.font = "bold 9px Arial";
             ctx.textAlign = "center";
-            ctx.fillText("VSD", midX, midY - 14);
+            ctx.fillText(label, midX, midY + 3);
         }
 
         function drawOutflowTube(startX, startY, endX, endY, color, label) {
