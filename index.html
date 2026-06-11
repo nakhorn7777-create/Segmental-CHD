@@ -134,8 +134,7 @@
                 <button class="btn btn-danger" onclick="applyPreset('pavsd')">PA/VSD</button>
             </div>
             <div class="preset-buttons" style="margin-top: -10px;">
-                <button class="btn btn-warning" onclick="applyPreset('ps_case')">+ Tof/PS Case</button>
-                <button class="btn btn-warning" onclick="applyPreset('as_case')">+ AS Case</button>
+                <button class="btn btn-warning" style="background-color: #e65100;" onclick="applyPreset('tof_case')">TOF</button>
             </div>
 
             <div class="form-group">
@@ -226,7 +225,7 @@
                 <span style="color: #ff3333; font-weight: bold;">■ Systemic (Ao)</span> | 
                 <span style="color: #3366ff; font-weight: bold;">■ Pulmonary (PA)</span> |
                 <span style="color: #9c27b0; font-weight: bold;">■ Mixed Blood (เลือดผสม)</span><br>
-                <span style="color: #e65100; font-weight: bold;">○ วงกลมส้ม = Shunts / Obstruction จุดวิกฤต</span>
+                <span style="color: #e65100; font-weight: bold;">○ วงกลมส้ม = จุดวิกฤต / Obstruction</span>
             </div>
         </div>
     </div>
@@ -248,7 +247,6 @@
         }
 
         function applyPreset(type) {
-            // เคลียร์ค่าพื้นฐานก่อน
             document.getElementById('asdCheck').checked = false;
             document.getElementById('vsdCheck').checked = false;
             document.getElementById('pdaCheck').checked = false;
@@ -290,23 +288,15 @@
                 document.getElementById('vessels').value = 'normal';
                 document.getElementById('vsdCheck').checked = true;
                 document.getElementById('pdaCheck').checked = true;
-            } else if(type === 'ps_case') {
-                // จำลองเคสลักษณะ TOF หรือ Concordant ที่มี PS ร่วมด้วย
+            } else if(type === 'tof_case') {
+                // เคส TOF แท้จริงตามมาตรฐานทางการแพทย์
                 document.getElementById('situs').value = 'S';
                 document.getElementById('loop').value = 'D';
                 document.getElementById('av').value = 'concordant';
                 document.getElementById('va').value = 'concordant';
                 document.getElementById('vessels').value = 'normal';
-                document.getElementById('vsdCheck').checked = true; // มี VSD ร่วม
-                document.getElementById('psCheck').checked = true;  // เปิดสวิตช์ PS ตีบ
-            } else if(type === 'as_case') {
-                // จำลองเคสที่มี Aortic Stenosis ตีบฝั่งซ้าย
-                document.getElementById('situs').value = 'S';
-                document.getElementById('loop').value = 'D';
-                document.getElementById('av').value = 'concordant';
-                document.getElementById('va').value = 'concordant';
-                document.getElementById('vessels').value = 'normal';
-                document.getElementById('asCheck').checked = true;  // เปิดสวิตช์ AS ตีบ
+                document.getElementById('vsdCheck').checked = true; 
+                document.getElementById('psCheck').checked = true;  
             }
             drawHeart();
         }
@@ -370,7 +360,7 @@
             }
 
             // ========================================================
-            // 🎨 เริ่มกระบวนการวาดโครงสร้างหลัก
+            // 🎨 เริ่มกระบวนการวาดส่วนประกอบ
             // ========================================================
             drawInflowTubes(raX, laX, atriumY, blockW);
 
@@ -393,11 +383,9 @@
             let paFinalX = paBotX + blockW / 2;
             let pdaY = 415;
 
-            // ตัวแปรสำหรับเก็บพิกัดโคนท่อเพื่อใช้สำหรับวาดวงกลม Stenosis ดักหน้า
             let aoRootX = 0, aoRootY = ventricleY + blockH;
             let paRootX = 0, paRootY = ventricleY + blockH;
 
-            // วาดท่อและกำหนดพิกัดโคนท่อตามเงื่อนไขโรค
             if (va === 'pa_ivs' || va === 'pa_vsd') {
                 drawOutflowTube(lvX + blockW/2, ventricleY + blockH, aoFinalX, 440, aoColor, "AO (Mixed)");
                 drawIsolatedPABranches(paFinalX, 440, paColor, hasPDA ? "PA Branches (Via PDA)" : "PA Branches (No Flow)");
@@ -423,14 +411,12 @@
             }
 
             // ========================================================
-            // 🛑 เพิ่มการวาดสัญลักษณ์ วงกลมตีบตัน (PS / AS Stenosis)
+            // 🛑 1. ปรับตำแหน่งตัวหนังสือขยับมาทางขวาของวงกลมตีบ (PS / AS)
             // ========================================================
             if (hasPS && va !== 'pa_ivs' && va !== 'pa_vsd') {
-                // วาดวงกลมส้มดักตรงโคนท่อจ่ายเลือดเข้าสู่ระบบ Pulmonary (PA) พร้อมเขียนกำกับภายนอกด้านล่าง
                 drawStenosisCircle(paRootX, paRootY + 20, "PS");
             }
             if (hasAS && va !== 'pa_ivs' && va !== 'pa_vsd') {
-                // วาดวงกลมส้มดักตรงโคนท่อจ่ายเลือดเข้าสู่ระบบ Systemic (AO) พร้อมเขียนกำกับภายนอกด้านล่าง
                 drawStenosisCircle(aoRootX, aoRootY + 20, "AS");
             }
 
@@ -471,10 +457,9 @@
             ctx.fillStyle = "#e65100"; ctx.font = "bold 9px Arial"; ctx.textAlign = "center"; ctx.fillText(label, midX, midY + 3);
         }
 
-        // ฟังก์ชันหัวใจใหม่สำหรับใช้เขียนและวาดสัญลักษณ์วงกลมตีบแคบ (Stenosis Indicator)
+        // 🛠️ ฟังก์ชันวาดสัญลักษณ์และปรับการวางตัวหนังสือเยื้องไปด้านขวาขนานตัววงกลม
         function drawStenosisCircle(x, y, label) {
             ctx.save();
-            // วาดวงกลมขอบหนาสีส้มเข้มทับโคนเส้นเลือด
             ctx.fillStyle = "#ffffff";
             ctx.strokeStyle = "#d84315";
             ctx.lineWidth = 3;
@@ -483,7 +468,6 @@
             ctx.fill();
             ctx.stroke();
 
-            // วาดเส้นทแยงมุมประหนึ่งสัญลักษณ์ Obstruction
             ctx.strokeStyle = "#d84315";
             ctx.lineWidth = 2;
             ctx.beginPath();
@@ -491,11 +475,11 @@
             ctx.lineTo(x + 7, y - 7);
             ctx.stroke();
 
-            // เขียนตัวหนังสือย่อภายนอกวงกลม โดยขยับลงมาด้านล่างเยื้องนิดหน่อยเพื่อให้อ่านง่ายตามเงื่อนไข
+            // เปลี่ยนพิกัด: ขยับแกน X มาทางขวา (+22) และปรับ Y ให้อยู่กึ่งกลางระนาบเดียวกับวงกลม (+4) อ่านง่ายสุดๆ ครับ
             ctx.fillStyle = "#c62828";
-            ctx.font = "bold 12px Arial";
-            ctx.textAlign = "center";
-            ctx.fillText(label, x, y + 26); 
+            ctx.font = "bold 13px Arial";
+            ctx.textAlign = "left"; // ปรับชิดซ้ายเพื่อให้เขียนตัวหนังสือยืดไปทางขวาพื้นที่สีขาว
+            ctx.fillText(label, x + 22, y + 4); 
             ctx.restore();
         }
 
