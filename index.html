@@ -119,7 +119,7 @@
 
     <div style="text-align: center; margin-bottom: 20px;">
         <h1>Segmental Analysis CHD Simulator</h1>
-        <p>เครื่องมือจำลองแผนภาพบล็อกสรีรวิทยาหัวใจพิการแต่กำเนิดพร้อมระบบคำนวณสีเลือดผสมอัตโนมัติ</p>
+        <p>เครื่องมือจำลองแผนภาพบล็อกสรีรวิทยาหัวใจพิการแต่กำเนิดพร้อมระบบจำลองการตีบแคบ (Obstructions)</p>
     </div>
 
     <div class="container">
@@ -132,6 +132,10 @@
                 <button class="btn btn-warning" onclick="applyPreset('dorv')">DORV</button>
                 <button class="btn btn-danger" onclick="applyPreset('paivs')">PA/IVS</button>
                 <button class="btn btn-danger" onclick="applyPreset('pavsd')">PA/VSD</button>
+            </div>
+            <div class="preset-buttons" style="margin-top: -10px;">
+                <button class="btn btn-warning" onclick="applyPreset('ps_case')">+ Tof/PS Case</button>
+                <button class="btn btn-warning" onclick="applyPreset('as_case')">+ AS Case</button>
             </div>
 
             <div class="form-group">
@@ -178,7 +182,7 @@
                 </select>
             </div>
 
-            <h3>2. Associated Defects (Shunts)</h3>
+            <h3>2. Associated Defects & Obstructions</h3>
             <div class="checkbox-container">
                 <div class="checkbox-group">
                     <label class="checkbox-label">
@@ -198,6 +202,19 @@
                         <span>Patent Ductus Arteriosus (PDA)</span>
                     </label>
                 </div>
+                <hr style="border: 0; border-top: 1px solid #e0e0e0; margin: 10px 0;">
+                <div class="checkbox-group">
+                    <label class="checkbox-label" style="color: #c62828;">
+                        <input type="checkbox" id="psCheck" onchange="drawHeart()">
+                        <span>Pulmonary Stenosis (PS ตีบ)</span>
+                    </label>
+                </div>
+                <div class="checkbox-group">
+                    <label class="checkbox-label" style="color: #c62828;">
+                        <input type="checkbox" id="asCheck" onchange="drawHeart()">
+                        <span>Aortic Stenosis (AS ตีบ)</span>
+                    </label>
+                </div>
             </div>
         </div>
 
@@ -208,8 +225,8 @@
             <div style="margin-top: 10px; font-size: 0.85rem; color: #666; text-align: center;">
                 <span style="color: #ff3333; font-weight: bold;">■ Systemic (Ao)</span> | 
                 <span style="color: #3366ff; font-weight: bold;">■ Pulmonary (PA)</span> |
-                <span style="color: #9c27b0; font-weight: bold;">■ Mixed Blood (เลือดผสม)</span> |
-                <span style="color: #78909c; font-weight: bold;">■ Atresia / No Flow (ตีบตัน)</span>
+                <span style="color: #9c27b0; font-weight: bold;">■ Mixed Blood (เลือดผสม)</span><br>
+                <span style="color: #e65100; font-weight: bold;">○ วงกลมส้ม = Shunts / Obstruction จุดวิกฤต</span>
             </div>
         </div>
     </div>
@@ -231,33 +248,32 @@
         }
 
         function applyPreset(type) {
+            // เคลียร์ค่าพื้นฐานก่อน
+            document.getElementById('asdCheck').checked = false;
+            document.getElementById('vsdCheck').checked = false;
+            document.getElementById('pdaCheck').checked = false;
+            document.getElementById('psCheck').checked = false;
+            document.getElementById('asCheck').checked = false;
+
             if(type === 'normal') {
                 document.getElementById('situs').value = 'S';
                 document.getElementById('loop').value = 'D';
                 document.getElementById('av').value = 'concordant';
                 document.getElementById('va').value = 'concordant';
                 document.getElementById('vessels').value = 'normal';
-                document.getElementById('asdCheck').checked = false;
-                document.getElementById('vsdCheck').checked = false;
-                document.getElementById('pdaCheck').checked = false;
             } else if(type === 'dtga') {
                 document.getElementById('situs').value = 'S';
                 document.getElementById('loop').value = 'D';
                 document.getElementById('av').value = 'concordant';
                 document.getElementById('va').value = 'discordant';
                 document.getElementById('vessels').value = 'd-loop';
-                document.getElementById('asdCheck').checked = false;
-                document.getElementById('vsdCheck').checked = false;
-                document.getElementById('pdaCheck').checked = false;
             } else if(type === 'dorv') {
                 document.getElementById('situs').value = 'S';
                 document.getElementById('loop').value = 'D';
                 document.getElementById('av').value = 'concordant';
                 document.getElementById('va').value = 'dorv';
                 document.getElementById('vessels').value = 'd-loop';
-                document.getElementById('asdCheck').checked = false;
                 document.getElementById('vsdCheck').checked = true;
-                document.getElementById('pdaCheck').checked = false;
             } else if(type === 'paivs') {
                 document.getElementById('situs').value = 'S';
                 document.getElementById('loop').value = 'D';
@@ -265,7 +281,6 @@
                 document.getElementById('va').value = 'pa_ivs';
                 document.getElementById('vessels').value = 'normal';
                 document.getElementById('asdCheck').checked = true;
-                document.getElementById('vsdCheck').checked = false;
                 document.getElementById('pdaCheck').checked = true;
             } else if(type === 'pavsd') {
                 document.getElementById('situs').value = 'S';
@@ -273,9 +288,25 @@
                 document.getElementById('av').value = 'concordant';
                 document.getElementById('va').value = 'pa_vsd';
                 document.getElementById('vessels').value = 'normal';
-                document.getElementById('asdCheck').checked = false;
                 document.getElementById('vsdCheck').checked = true;
                 document.getElementById('pdaCheck').checked = true;
+            } else if(type === 'ps_case') {
+                // จำลองเคสลักษณะ TOF หรือ Concordant ที่มี PS ร่วมด้วย
+                document.getElementById('situs').value = 'S';
+                document.getElementById('loop').value = 'D';
+                document.getElementById('av').value = 'concordant';
+                document.getElementById('va').value = 'concordant';
+                document.getElementById('vessels').value = 'normal';
+                document.getElementById('vsdCheck').checked = true; // มี VSD ร่วม
+                document.getElementById('psCheck').checked = true;  // เปิดสวิตช์ PS ตีบ
+            } else if(type === 'as_case') {
+                // จำลองเคสที่มี Aortic Stenosis ตีบฝั่งซ้าย
+                document.getElementById('situs').value = 'S';
+                document.getElementById('loop').value = 'D';
+                document.getElementById('av').value = 'concordant';
+                document.getElementById('va').value = 'concordant';
+                document.getElementById('vessels').value = 'normal';
+                document.getElementById('asCheck').checked = true;  // เปิดสวิตช์ AS ตีบ
             }
             drawHeart();
         }
@@ -289,6 +320,8 @@
             const hasASD = document.getElementById('asdCheck').checked;
             const hasVSD = document.getElementById('vsdCheck').checked;
             const hasPDA = document.getElementById('pdaCheck').checked;
+            const hasPS = document.getElementById('psCheck').checked;
+            const hasAS = document.getElementById('asCheck').checked;
 
             let vaSign = (va === 'concordant') ? 'S' : ((va === 'discordant') ? 'D' : ((va === 'dorv') ? 'DORV' : 'PA'));
             document.getElementById('notationDisplay').innerText = `{${situs}, ${loop}, ${vaSign}}`;
@@ -337,7 +370,7 @@
             }
 
             // ========================================================
-            // 🎨 เริ่มกระบวนการวาดส่วนประกอบ
+            // 🎨 เริ่มกระบวนการวาดโครงสร้างหลัก
             // ========================================================
             drawInflowTubes(raX, laX, atriumY, blockW);
 
@@ -360,23 +393,45 @@
             let paFinalX = paBotX + blockW / 2;
             let pdaY = 415;
 
+            // ตัวแปรสำหรับเก็บพิกัดโคนท่อเพื่อใช้สำหรับวาดวงกลม Stenosis ดักหน้า
+            let aoRootX = 0, aoRootY = ventricleY + blockH;
+            let paRootX = 0, paRootY = ventricleY + blockH;
+
+            // วาดท่อและกำหนดพิกัดโคนท่อตามเงื่อนไขโรค
             if (va === 'pa_ivs' || va === 'pa_vsd') {
                 drawOutflowTube(lvX + blockW/2, ventricleY + blockH, aoFinalX, 440, aoColor, "AO (Mixed)");
                 drawIsolatedPABranches(paFinalX, 440, paColor, hasPDA ? "PA Branches (Via PDA)" : "PA Branches (No Flow)");
             } 
             else if (va === 'dorv') {
-                // ปรับแต่งพิกัดทางออกเล็กน้อยให้เยื้องจากกึ่งกลางห้อง (หลบมุมชนรูรั่ว VSD)
                 let rvCenter = rvX + blockW / 2;
-                drawOutflowTube(rvCenter - 25, ventricleY + blockH, aoFinalX, 440, aoColor, "AO (Mixed)");
-                drawOutflowTube(rvCenter + 25, ventricleY + blockH, paFinalX, 440, paColor, "PA (Mixed)");
+                aoRootX = rvCenter - 25;
+                paRootX = rvCenter + 25;
+                drawOutflowTube(aoRootX, ventricleY + blockH, aoFinalX, 440, aoColor, "AO (Mixed)");
+                drawOutflowTube(paRootX, ventricleY + blockH, paFinalX, 440, paColor, "PA (Mixed)");
             } 
             else if (va === 'discordant') {
-                drawOutflowTube(rvX + blockW/2, ventricleY + blockH, aoFinalX, 440, "#ff3333", "AO (Aorta)");
-                drawOutflowTube(lvX + blockW/2, ventricleY + blockH, paFinalX, 440, "#3366ff", "PA (Pulmonary)");
+                aoRootX = rvX + blockW/2;
+                paRootX = lvX + blockW/2;
+                drawOutflowTube(aoRootX, ventricleY + blockH, aoFinalX, 440, "#ff3333", "AO (Aorta)");
+                drawOutflowTube(paRootX, ventricleY + blockH, paFinalX, 440, "#3366ff", "PA (Pulmonary)");
             } 
             else {
-                drawOutflowTube(lvX + blockW/2, ventricleY + blockH, aoFinalX, 440, "#ff3333", "AO (Aorta)");
-                drawOutflowTube(rvX + blockW/2, ventricleY + blockH, paFinalX, 440, "#3366ff", "PA (Pulmonary)");
+                aoRootX = lvX + blockW/2;
+                paRootX = rvX + blockW/2;
+                drawOutflowTube(aoRootX, ventricleY + blockH, aoFinalX, 440, "#ff3333", "AO (Aorta)");
+                drawOutflowTube(paRootX, ventricleY + blockH, paFinalX, 440, "#3366ff", "PA (Pulmonary)");
+            }
+
+            // ========================================================
+            // 🛑 เพิ่มการวาดสัญลักษณ์ วงกลมตีบตัน (PS / AS Stenosis)
+            // ========================================================
+            if (hasPS && va !== 'pa_ivs' && va !== 'pa_vsd') {
+                // วาดวงกลมส้มดักตรงโคนท่อจ่ายเลือดเข้าสู่ระบบ Pulmonary (PA) พร้อมเขียนกำกับภายนอกด้านล่าง
+                drawStenosisCircle(paRootX, paRootY + 20, "PS");
+            }
+            if (hasAS && va !== 'pa_ivs' && va !== 'pa_vsd') {
+                // วาดวงกลมส้มดักตรงโคนท่อจ่ายเลือดเข้าสู่ระบบ Systemic (AO) พร้อมเขียนกำกับภายนอกด้านล่าง
+                drawStenosisCircle(aoRootX, aoRootY + 20, "AS");
             }
 
             if (hasPDA) {
@@ -411,37 +466,55 @@
 
         function drawSeptalDefect(leftX, rightX, yCoord, blockW, blockH, label) {
             let leftBoxRightEdge = Math.min(leftX, rightX) + blockW; let rightBoxLeftEdge = Math.max(leftX, rightX); let midX = (leftBoxRightEdge + rightBoxLeftEdge) / 2; let midY = yCoord + blockH / 2;
-            ctx.strokeStyle = "#ffa726"; ctx.lineWidth = 12; ctx.beginPath(); ctx.moveTo(leftBoxRightEdge - 15, midY); ctx.lineTo(rightBoxLeftEdge + 15, midY); ctx.stroke(); // <-- ซ่อมแซมเติม ctx. เรียบร้อยแล้วครับ
+            ctx.strokeStyle = "#ffa726"; ctx.lineWidth = 12; ctx.beginPath(); ctx.moveTo(leftBoxRightEdge - 15, midY); ctx.lineTo(rightBoxLeftEdge + 15, midY); ctx.stroke();
             ctx.fillStyle = "#ffffff"; ctx.strokeStyle = "#e65100"; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(midX, midY, 10, 0, 2 * Math.PI); ctx.fill(); ctx.stroke();
             ctx.fillStyle = "#e65100"; ctx.font = "bold 9px Arial"; ctx.textAlign = "center"; ctx.fillText(label, midX, midY + 3);
+        }
+
+        // ฟังก์ชันหัวใจใหม่สำหรับใช้เขียนและวาดสัญลักษณ์วงกลมตีบแคบ (Stenosis Indicator)
+        function drawStenosisCircle(x, y, label) {
+            ctx.save();
+            // วาดวงกลมขอบหนาสีส้มเข้มทับโคนเส้นเลือด
+            ctx.fillStyle = "#ffffff";
+            ctx.strokeStyle = "#d84315";
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.arc(x, y, 11, 0, 2 * Math.PI);
+            ctx.fill();
+            ctx.stroke();
+
+            // วาดเส้นทแยงมุมประหนึ่งสัญลักษณ์ Obstruction
+            ctx.strokeStyle = "#d84315";
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(x - 7, y + 7);
+            ctx.lineTo(x + 7, y - 7);
+            ctx.stroke();
+
+            // เขียนตัวหนังสือย่อภายนอกวงกลม โดยขยับลงมาด้านล่างเยื้องนิดหน่อยเพื่อให้อ่านง่ายตามเงื่อนไข
+            ctx.fillStyle = "#c62828";
+            ctx.font = "bold 12px Arial";
+            ctx.textAlign = "center";
+            ctx.fillText(label, x, y + 26); 
+            ctx.restore();
         }
 
         function drawOutflowTube(startX, startY, endX, endY, color, label) {
             ctx.strokeStyle = color; ctx.lineWidth = 14; ctx.lineCap = "square"; ctx.beginPath(); ctx.moveTo(startX, startY);
             ctx.bezierCurveTo(startX, (startY + endY)/2, endX, (startY + endY)/2 - 30, endX, endY);
             ctx.stroke();
-
             ctx.beginPath(); ctx.moveTo(endX, endY); ctx.lineTo(endX - 20, endY + 25); ctx.moveTo(endX, endY); ctx.lineTo(endX + 20, endY + 25); ctx.stroke();
             ctx.fillStyle = color; ctx.fillRect(endX - 45, endY - 12, 90, 18);
             ctx.fillStyle = "#ffffff"; ctx.font = "bold 11px Arial"; ctx.textAlign = "center"; ctx.fillText(label, endX, endY + 1);
         }
 
         function drawIsolatedPABranches(endX, endY, color, label) {
-            ctx.strokeStyle = color; ctx.lineWidth = 14; ctx.lineCap = "square"; ctx.beginPath(); ctx.moveTo(endX, endY - 35); ctx.lineTo(endX, endY);
-            ctx.stroke();
+            ctx.strokeStyle = color; ctx.lineWidth = 14; ctx.lineCap = "square"; ctx.beginPath(); ctx.moveTo(endX, endY - 35); ctx.lineTo(endX, endY); ctx.stroke();
             ctx.beginPath(); ctx.moveTo(endX, endY); ctx.lineTo(endX - 20, endY + 25); ctx.moveTo(endX, endY); ctx.lineTo(endX + 20, endY + 25); ctx.stroke();
             ctx.fillStyle = color; ctx.fillRect(endX - 55, endY - 12, 110, 18);
             ctx.fillStyle = "#ffffff"; ctx.font = "bold 10px Arial"; ctx.textAlign = "center"; ctx.fillText(label, endX, endY + 1);
         }
 
-        function drawDarkShunt(aoX, paX, y) {
-            let startX = Math.min(aoX, paX); let endX = Math.max(aoX, paX); let midX = (startX + endX) / 2;
-            ctx.strokeStyle = "#ffa726"; ctx.lineWidth = 10; ctx.beginPath(); ctx.moveTo(startX, y); ctx.lineTo(endX, y); ctx.stroke();
-            ctx.fillStyle = "#ffffff"; ctx.strokeStyle = "#e65100"; ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(midX, y, 16, 8, 0, 0, 2 * Math.PI); ctx.fill(); ctx.stroke();
-            ctx.fillStyle = "#e65100"; ctx.font = "bold 8px Arial"; ctx.textAlign = "center"; ctx.fillText("PDA", midX, y + 3);
-        }
-        
-        // ฟังก์ชันเบื้องหลังสำหรับรันสะพานเชื่อม PDA
         function drawPDAShunt(aoX, paX, y) {
             let startX = Math.min(aoX, paX); let endX = Math.max(aoX, paX); let midX = (startX + endX) / 2;
             ctx.strokeStyle = "#ffa726"; ctx.lineWidth = 10; ctx.beginPath(); ctx.moveTo(startX, y); ctx.lineTo(endX, y); ctx.stroke();
