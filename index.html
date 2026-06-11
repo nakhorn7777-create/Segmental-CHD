@@ -176,9 +176,9 @@
             <div class="form-group">
                 <label for="vessels">5. Great Arteries Relationship</label>
                 <select id="vessels" onchange="drawHeart()">
-                    <option value="normal">Normal (Ao อยู่เยื้องหลัง/ขวา)</option>
-                    <option value="d-loop">D-Malposition (Ao อยู่หน้า/ขวา)</option>
-                    <option value="l-loop">L-Malposition (Ao อยู่หน้า/ซ้าย)</option>
+                    <option value="normal">Normal (Ao อยู่เยื้องหลัง/ขวา) - [S]</option>
+                    <option value="d-loop">D-Malposition (Ao อยู่หน้า/ขวา) - [D]</option>
+                    <option value="l-loop">L-Malposition (Ao อยู่หน้า/ซ้าย) - [L]</option>
                 </select>
             </div>
 
@@ -267,12 +267,11 @@
                 document.getElementById('va').value = 'discordant';
                 document.getElementById('vessels').value = 'd-loop';
             } else if(type === 'cctga') {
-                // 🧠 ตรรกะของระบบวิเคราะห์เคส ccTGA (l-TGA) แท้จริงทางการแพทย์
                 document.getElementById('situs').value = 'S';
-                document.getElementById('loop').value = 'L';          // สลับห้องล่างเป็น L-Loop
-                document.getElementById('av').value = 'discordant';    // บังคับ AV Discordance (RA->LV, LA->RV)
-                document.getElementById('va').value = 'discordant';    // บังคับ VA Discordance (RV->Ao, LV->PA)
-                document.getElementById('vessels').value = 'l-loop';   // ความสัมพันธ์เส้นเลือดแบบ L-Loop Malposition
+                document.getElementById('loop').value = 'L';          
+                document.getElementById('av').value = 'discordant';    
+                document.getElementById('va').value = 'discordant';    
+                document.getElementById('vessels').value = 'l-loop';   
             } else if(type === 'dorv') {
                 document.getElementById('situs').value = 'S';
                 document.getElementById('loop').value = 'D';
@@ -320,8 +319,13 @@
             const hasPS = document.getElementById('psCheck').checked;
             const hasAS = document.getElementById('asCheck').checked;
 
-            let vaSign = (va === 'concordant') ? 'S' : ((va === 'discordant') ? 'D' : ((va === 'dorv') ? 'DORV' : 'PA'));
-            document.getElementById('notationDisplay').innerText = `{${situs}, ${loop}, ${vaSign}}`;
+            // 🧠 Fix ตรรกะอักษรตัวที่ 3: คำนวณรหัสสากลดึงตามค่าดรอปดาวน์ความสัมพันธ์หลอดเลือด (Vessels Relationship) โดยตรง
+            let vesselSign = 'S'; // ค่า Normal ตั้งต้น
+            if (vessels === 'd-loop') vesselSign = 'D';
+            else if (vessels === 'l-loop') vesselSign = 'L';
+
+            // อัปเดตขึ้นหน้าจอเป็นระบบ {Situs, Loop, Relationship} ที่ถูกต้องแม่นยำตามเกณฑ์การแพทย์
+            document.getElementById('notationDisplay').innerText = `{${situs}, ${loop}, ${vesselSign}}`;
 
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
@@ -333,12 +337,11 @@
             let raX = 90, laX = 230;
             if (situs === 'I') { raX = 230; laX = 90; }
 
-            // สลับพิกัดหน้ากล่องห้องล่างตามตรรกะ Loop (สเตปนี้จะส่งผลดีกับเคส ccTGA ทันทีเมื่อ Loop เป็น L)
             let rvX = 90, lvX = 230;
             if (loop === 'L') { rvX = 230; lvX = 90; }
 
             // ========================================================
-            // ⚖️ ระบบคำนวณเฉดสีเลือดตามสรีรวิทยา (Hemodynamics)
+            // ⚖️ ระบบคำนวณเฉดสีเลือดตามสรีรวิทยา
             // ========================================================
             let raBg = "#e3f2fd", raBorder = "#1565c0";
             let laBg = "#ffebee", laBorder = "#c62828";
@@ -367,9 +370,6 @@
                 paColor = hasPDA ? "#9c27b0" : "#78909c";
             }
             else if (av === 'discordant' && va === 'discordant' && loop === 'L') {
-                // 🩺 เฉพาะเคส ccTGA: ห้องสลับฝั่งแต่ทิศทางเลือดสรีรวิทยาปกติ (Corrected)
-                // RV มาอยู่ฝั่งซ้ายของจอภาพคอยรับเลือดแดงจาก LA ไปหา AO ตัว AO จึงเป็นสีแดงปกติ
-                // LV มาอยู่ฝั่งขวาของจอภาพคอยรับเลือดดำจาก RA ไปหา PA ตัว PA จึงเป็นสีน้ำเงินปกติ
                 rvText = "RV (Systemic RV ความดันสูง)";
                 lvBg = "#ffebee"; lvBorder = "#c62828";
             }
@@ -390,10 +390,9 @@
             if (hasASD) drawSeptalDefect(raX, laX, atriumY, blockW, blockH, "ASD");
             if (hasVSD) drawSeptalDefect(rvX, lvX, ventricleY, blockW, blockH, "VSD");
 
-            // 📐 คำนวณพิกัดทางออกหลอดเลือดใหญ่ด้านล่างสุด
             let aoBotX = 230, paBotX = 90; 
             if (vessels === 'd-loop') { aoBotX = 90; paBotX = 230; }
-            else if (vessels === 'l-loop') { aoBotX = 70; paBotX = 250; } // ดึงขั้วเฉียงหลบไปซ้ายตามหลัก L-Loop
+            else if (vessels === 'l-loop') { aoBotX = 70; paBotX = 250; } 
 
             let aoFinalX = aoBotX + blockW / 2;
             let paFinalX = paBotX + blockW / 2;
@@ -414,7 +413,6 @@
                 drawOutflowTube(paRootX, ventricleY + blockH, paFinalX, 440, paColor, "PA (Mixed)");
             } 
             else if (va === 'discordant') {
-                // สำหรับทั้ง d-TGA และ ccTGA ขั้วจะสลับออกจาก Ventricle ไขว้กัน
                 aoRootX = rvX + blockW/2;
                 paRootX = lvX + blockW/2;
                 drawOutflowTube(aoRootX, ventricleY + blockH, aoFinalX, 440, aoColor, "AO");
@@ -492,7 +490,7 @@
 
         function drawIsolatedPABranches(endX, endY, color, label) {
             ctx.strokeStyle = color; ctx.lineWidth = 14; ctx.lineCap = "square"; ctx.beginPath(); ctx.moveTo(endX, endY - 35); ctx.lineTo(endX, endY); ctx.stroke();
-            ctx.beginPath(); ctx.moveTo(endX, endY); ctx.lineTo(endX - 20, endY + 25); ctx.moveTo(endX, endY); ctx.lineTo(endX + 20, endY + 25); stroke();
+            ctx.beginPath(); ctx.moveTo(endX, endY); ctx.lineTo(endX - 20, endY + 25); ctx.moveTo(endX, endY); ctx.lineTo(endX + 20, endY + 25); ctx.stroke();
             ctx.fillStyle = color; ctx.fillRect(endX - 55, endY - 12, 110, 18);
             ctx.fillStyle = "#ffffff"; ctx.font = "bold 10px Arial"; ctx.textAlign = "center"; ctx.fillText(label, endX, endY + 1);
         }
