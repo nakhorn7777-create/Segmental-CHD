@@ -135,7 +135,7 @@
                 <button class="btn btn-danger" onclick="applyPreset('pavsd')">PA/VSD</button>
             </div>
             <div class="preset-buttons" style="margin-top: -10px;">
-                <button class="btn btn-warning" style="background-color: #e65100; max-width: 90px;" onclick="applyPreset('tof_case')">TOF</button>
+                <button class="btn btn-warning" style="background-color: #e65100;" onclick="applyPreset('tof_case')">TOF</button>
             </div>
 
             <div class="form-group">
@@ -205,13 +205,13 @@
                 <hr style="border: 0; border-top: 1px solid #e0e0e0; margin: 10px 0;">
                 <div class="checkbox-group">
                     <label class="checkbox-label" style="color: #c62828;">
-                        <input type="checkbox" id="psCheck" onchange="onchange="drawHeart()"">
+                        <input type="checkbox" id="psCheck" onchange="drawHeart()">
                         <span>Pulmonary Stenosis (PS ตีบ)</span>
                     </label>
                 </div>
                 <div class="checkbox-group">
                     <label class="checkbox-label" style="color: #c62828;">
-                        <input type="checkbox" id="asCheck" onchange="onchange="drawHeart()"">
+                        <input type="checkbox" id="asCheck" onchange="drawHeart()">
                         <span>Aortic Stenosis (AS ตีบ)</span>
                     </label>
                 </div>
@@ -319,11 +319,12 @@
             const hasPS = document.getElementById('psCheck').checked;
             const hasAS = document.getElementById('asCheck').checked;
 
-            // 🧠 คำนวณรหัสสากลอักษรตัวที่ 3 ดึงตามค่าดรอปดาวน์ความสัมพันธ์หลอดเลือด (Vessels Relationship) โดยตรงอย่างแม่นยำ
-            let vesselSign = 'S'; 
+            // 🧠 Fix ตรรกะอักษรตัวที่ 3: คำนวณรหัสสากลดึงตามค่าดรอปดาวน์ความสัมพันธ์หลอดเลือด (Vessels Relationship) โดยตรง
+            let vesselSign = 'S'; // ค่า Normal ตั้งต้น
             if (vessels === 'd-loop') vesselSign = 'D';
             else if (vessels === 'l-loop') vesselSign = 'L';
 
+            // อัปเดตขึ้นหน้าจอเป็นระบบ {Situs, Loop, Relationship} ที่ถูกต้องแม่นยำตามเกณฑ์การแพทย์
             document.getElementById('notationDisplay').innerText = `{${situs}, ${loop}, ${vesselSign}}`;
 
             ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -373,6 +374,9 @@
                 lvBg = "#ffebee"; lvBorder = "#c62828";
             }
 
+            // ========================================================
+            // 🎨 เริ่มกระบวนการวาดส่วนประกอบ
+            // ========================================================
             drawInflowTubes(raX, laX, atriumY, blockW);
 
             drawAnatomicalBlock(raX, atriumY, blockW, blockH, "RA", "รับเลือดดำจากร่างกาย", raBg, raBorder);
@@ -397,13 +401,7 @@
             let aoRootX = 0, aoRootY = ventricleY + blockH;
             let paRootX = 0, paRootY = ventricleY + blockH;
 
-            // ⚠️ กรณีเฉพาะ d-TGA: LV -> PA (เลือดผสม) และ RV -> Ao (เลือดแดง)
-            if (va === 'discordant' && loop === 'D') {
-                // RV -> Ao (เลือดแดง)
-                drawOutflowTube(rvX + blockW/2, ventricleY + blockH, aoFinalX, 440, "#ff3333", "AO (Aorta)"); 
-                // LV -> PA (เลือดผสม - สีม่วง)
-                drawOutflowTube(lvX + blockW/2, ventricleY + blockH, paFinalX, 440, "#9c27b0", "PA (Mixed)");
-            } else if (va === 'pa_ivs' || va === 'pa_vsd') {
+            if (va === 'pa_ivs' || va === 'pa_vsd') {
                 drawOutflowTube(lvX + blockW/2, ventricleY + blockH, aoFinalX, 440, aoColor, "AO (Mixed)");
                 drawIsolatedPABranches(paFinalX, 440, paColor, hasPDA ? "PA Branches (Via PDA)" : "PA Branches (No Flow)");
             } 
@@ -414,21 +412,25 @@
                 drawOutflowTube(aoRootX, ventricleY + blockH, aoFinalX, 440, aoColor, "AO (Mixed)");
                 drawOutflowTube(paRootX, ventricleY + blockH, paFinalX, 440, paColor, "PA (Mixed)");
             } 
-            else if (va === 'discordant' && loop === 'L') { // 🩺 ccTGA หรือ VA discordant แบบอื่นๆ ใน L-loop
+            else if (va === 'discordant') {
                 aoRootX = rvX + blockW/2;
                 paRootX = lvX + blockW/2;
                 drawOutflowTube(aoRootX, ventricleY + blockH, aoFinalX, 440, aoColor, "AO");
                 drawOutflowTube(paRootX, ventricleY + blockH, paFinalX, 440, paColor, "PA");
             } 
-            else { // concordant normal
+            else {
                 aoRootX = lvX + blockW/2;
                 paRootX = rvX + blockW/2;
                 drawOutflowTube(aoRootX, ventricleY + blockH, aoFinalX, 440, aoColor, "AO");
                 drawOutflowTube(paRootX, ventricleY + blockH, paFinalX, 440, paColor, "PA");
             }
 
-            if (hasPS && va !== 'pa_ivs' && va !== 'pa_vsd') drawStenosisCircle(paRootX, paRootY + 20, "PS");
-            if (hasAS && va !== 'pa_ivs' && va !== 'pa_vsd') drawStenosisCircle(aoRootX, aoRootY + 20, "AS");
+            if (hasPS && va !== 'pa_ivs' && va !== 'pa_vsd') {
+                drawStenosisCircle(paRootX, paRootY + 20, "PS");
+            }
+            if (hasAS && va !== 'pa_ivs' && va !== 'pa_vsd') {
+                drawStenosisCircle(aoRootX, aoRootY + 20, "AS");
+            }
 
             if (hasPDA) {
                 drawPDAShunt(aoFinalX, paFinalX, pdaY);
