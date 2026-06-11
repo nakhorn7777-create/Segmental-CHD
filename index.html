@@ -140,7 +140,7 @@
 
             <div class="form-group">
                 <label for="situs">1. Atrial Situs (Situs)</label>
-                <select id="situs" onchange="drawHeart()">
+                <select id="situs">
                     <option value="S">Situs Solitus (S) - RA Right, LA Left</option>
                     <option value="I">Situs Inversus (I) - RA Left, LA Right</option>
                 </select>
@@ -148,7 +148,7 @@
 
             <div class="form-group">
                 <label for="loop">2. Ventricular Loop (Loop)</label>
-                <select id="loop" onchange="drawHeart()">
+                <select id="loop">
                     <option value="D">D-Loop (RV Right, LV Left)</option>
                     <option value="L">L-Loop (RV Left, LV Right)</option>
                 </select>
@@ -156,7 +156,7 @@
 
             <div class="form-group">
                 <label for="av">3. AV Connection (ลิ้นหัวใจกั้นห้อง)</label>
-                <select id="av" onchange="drawHeart()">
+                <select id="av">
                     <option value="concordant">Concordant (ห้องบน-ล่างตรงกัน)</option>
                     <option value="discordant">Discordant (ห้องบน-ล่างสลับไขว้ฝั่ง)</option>
                 </select>
@@ -175,43 +175,43 @@
 
             <div class="form-group">
                 <label for="vessels">5. Great Arteries Relationship</label>
-                <select id="vessels" onchange="drawHeart()">
+                <select id="vessels">
                     <option value="normal">Normal (Ao อยู่เยื้องหลัง/ขวา) - [S]</option>
                     <option value="d-loop">D-Malposition (Ao อยู่หน้า/ขวา) - [D]</option>
                     <option value="l-loop">L-Malposition (Ao อยู่หน้า/ซ้าย) - [L]</option>
                 </select>
             </div>
 
-            <h3>2. Associated Defects & Obstructions</h3>
+            <h3>2. L to R Shunt (ทิศทางการวิ่งของเลือด)</h3>
             <div class="checkbox-container">
                 <div class="checkbox-group">
-                    <label class="checkbox-label">
-                        <input type="checkbox" id="asdCheck" onchange="drawHeart()">
-                        <span>Atrial Septal Defect (ASD)</span>
+                    <label class="checkbox-label" style="color: #0d47a1;">
+                        <input type="checkbox" id="asdCheck">
+                        <span>ASD (Left to Right Shunt)</span>
                     </label>
                 </div>
                 <div class="checkbox-group">
-                    <label class="checkbox-label">
-                        <input type="checkbox" id="vsdCheck" onchange="drawHeart()">
-                        <span>Ventricular Septal Defect (VSD)</span>
+                    <label class="checkbox-label" style="color: #0d47a1;">
+                        <input type="checkbox" id="vsdCheck">
+                        <span>VSD (Left to Right Shunt)</span>
                     </label>
                 </div>
                 <div class="checkbox-group">
-                    <label class="checkbox-label">
-                        <input type="checkbox" id="pdaCheck" onchange="drawHeart()">
-                        <span>Patent Ductus Arteriosus (PDA)</span>
+                    <label class="checkbox-label" style="color: #0d47a1;">
+                        <input type="checkbox" id="pdaCheck">
+                        <span>PDA (Left to Right Shunt)</span>
                     </label>
                 </div>
                 <hr style="border: 0; border-top: 1px solid #e0e0e0; margin: 10px 0;">
                 <div class="checkbox-group">
                     <label class="checkbox-label" style="color: #c62828;">
-                        <input type="checkbox" id="psCheck" onchange="drawHeart()">
+                        <input type="checkbox" id="psCheck">
                         <span>Pulmonary Stenosis (PS ตีบ)</span>
                     </label>
                 </div>
                 <div class="checkbox-group">
                     <label class="checkbox-label" style="color: #c62828;">
-                        <input type="checkbox" id="asCheck" onchange="drawHeart()">
+                        <input type="checkbox" id="asCheck">
                         <span>Aortic Stenosis (AS ตีบ)</span>
                     </label>
                 </div>
@@ -226,7 +226,7 @@
                 <span style="color: #ff3333; font-weight: bold;">■ Systemic (Ao)</span> | 
                 <span style="color: #3366ff; font-weight: bold;">■ Pulmonary (PA)</span> |
                 <span style="color: #9c27b0; font-weight: bold;">■ Mixed Blood (เลือดผสม)</span><br>
-                <span style="color: #e65100; font-weight: bold;">○ วงกลมส้ม = จุดวิกฤต / Obstruction</span>
+                <span style="color: #ffa726; font-weight: bold;">🍊 ลูกศรวิ่งสีส้ม = ทิศทางแรงดัน Shunt Vector</span>
             </div>
         </div>
     </div>
@@ -234,6 +234,15 @@
     <script>
         const canvas = document.getElementById('heartCanvas');
         const ctx = canvas.getContext('2d');
+        
+        // 🏃 ตัวแปรคุมแอนิเมชันลูกศรวิ่ง (Dash Offset Animation)
+        let animationOffset = 0;
+
+        // ผูก Event Listener คอยดักจับการเปลี่ยนแปลงของ Dropdown และ Checkbox ทั้งหน้าจอเพื่อเรนเดอร์แบบ Real-time
+        const allInputs = document.querySelectorAll('select, input[type="checkbox"]');
+        allInputs.forEach(input => {
+            input.addEventListener('change', () => drawHeart());
+        });
 
         function onVAChange() {
             const va = document.getElementById('va').value;
@@ -319,12 +328,10 @@
             const hasPS = document.getElementById('psCheck').checked;
             const hasAS = document.getElementById('asCheck').checked;
 
-            // 🧠 Fix ตรรกะอักษรตัวที่ 3: คำนวณรหัสสากลดึงตามค่าดรอปดาวน์ความสัมพันธ์หลอดเลือด (Vessels Relationship) โดยตรง
-            let vesselSign = 'S'; // ค่า Normal ตั้งต้น
+            let vesselSign = 'S'; 
             if (vessels === 'd-loop') vesselSign = 'D';
             else if (vessels === 'l-loop') vesselSign = 'L';
 
-            // อัปเดตขึ้นหน้าจอเป็นระบบ {Situs, Loop, Relationship} ที่ถูกต้องแม่นยำตามเกณฑ์การแพทย์
             document.getElementById('notationDisplay').innerText = `{${situs}, ${loop}, ${vesselSign}}`;
 
             ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -387,8 +394,9 @@
 
             drawAVValves(raX, laX, rvX, lvX, atriumY + blockH, ventricleY, blockW, av);
 
-            if (hasASD) drawSeptalDefect(raX, laX, atriumY, blockW, blockH, "ASD");
-            if (hasVSD) drawSeptalDefect(rvX, lvX, ventricleY, blockW, blockH, "VSD");
+            // วาดรูรั่วและลูกศรแอนิเมชันสำหรับพยาธิสภาพ Shunts ระดับ Atrium และ Ventricle
+            if (hasASD) drawSeptalDefectWithVector(raX, laX, atriumY, blockW, blockH, "ASD", "L2R");
+            if (hasVSD) drawSeptalDefectWithVector(rvX, lvX, ventricleY, blockW, blockH, "VSD", "L2R");
 
             let aoBotX = 230, paBotX = 90; 
             if (vessels === 'd-loop') { aoBotX = 90; paBotX = 230; }
@@ -425,15 +433,12 @@
                 drawOutflowTube(paRootX, ventricleY + blockH, paFinalX, 440, paColor, "PA");
             }
 
-            if (hasPS && va !== 'pa_ivs' && va !== 'pa_vsd') {
-                drawStenosisCircle(paRootX, paRootY + 20, "PS");
-            }
-            if (hasAS && va !== 'pa_ivs' && va !== 'pa_vsd') {
-                drawStenosisCircle(aoRootX, aoRootY + 20, "AS");
-            }
+            if (hasPS && va !== 'pa_ivs' && va !== 'pa_vsd') drawStenosisCircle(paRootX, paRootY + 20, "PS");
+            if (hasAS && va !== 'pa_ivs' && va !== 'pa_vsd') drawStenosisCircle(aoRootX, aoRootY + 20, "AS");
 
+            // วาดจุดเชื่อมต่อและอนิเมชันลูกศรวิ่งสำหรับ PDA (เชื่อมระหว่างทางผ่านหลอดเลือดใหญ่)
             if (hasPDA) {
-                drawPDAShunt(aoFinalX, paFinalX, pdaY);
+                drawPDAShuntWithVector(aoFinalX, paFinalX, pdaY, "L2R");
             }
         }
 
@@ -464,11 +469,62 @@
             ctx.stroke(); ctx.setLineDash([]);
         }
 
-        function drawSeptalDefect(leftX, rightX, yCoord, blockW, blockH, label) {
-            let leftBoxRightEdge = Math.min(leftX, rightX) + blockW; let rightBoxLeftEdge = Math.max(leftX, rightX); let midX = (leftBoxRightEdge + rightBoxLeftEdge) / 2; let midY = yCoord + blockH / 2;
-            ctx.strokeStyle = "#ffa726"; ctx.lineWidth = 12; ctx.beginPath(); ctx.moveTo(leftBoxRightEdge - 15, midY); ctx.lineTo(rightBoxLeftEdge + 15, midY); ctx.stroke();
-            ctx.fillStyle = "#ffffff"; ctx.strokeStyle = "#e65100"; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(midX, midY, 10, 0, 2 * Math.PI); ctx.fill(); ctx.stroke();
-            ctx.fillStyle = "#e65100"; ctx.font = "bold 9px Arial"; ctx.textAlign = "center"; ctx.fillText(label, midX, midY + 3);
+        // 🛠️ ฟังก์ชันวาดพยาธิสภาพรูรั่วกั้นห้องหัวใจพร้อมติดลูกศรเวกเตอร์ทิศทางการวิ่งอนิเมชันขยับได้
+        function drawSeptalDefectWithVector(leftX, rightX, yCoord, blockW, blockH, label, direction) {
+            let leftBoxRightEdge = Math.min(leftX, rightX) + blockW;
+            let rightBoxLeftEdge = Math.max(leftX, rightX);
+            let midX = (leftBoxRightEdge + rightBoxLeftEdge) / 2;
+            let midY = yCoord + blockH / 2;
+
+            // วาดโครงสร้างรูเชื่อมสีส้มพื้นฐาน
+            ctx.strokeStyle = "#ffa726"; ctx.lineWidth = 12; ctx.beginPath();
+            ctx.moveTo(leftBoxRightEdge - 15, midY); ctx.lineTo(rightBoxLeftEdge + 15, midY); ctx.stroke();
+
+            // 🍊 เพิ่มตรรกะลูกศรอนิเมชันวิ่งขยับจริงแบบ Left-to-Right Shunt (วิ่งจากฝั่ง LA/LV ไปหา RA/RV ตามพิกัดจอภาพ)
+            ctx.save();
+            ctx.strokeStyle = "#e65100"; ctx.lineWidth = 3;
+            ctx.setLineDash([6, 4]); // สร้างเส้นประ
+            ctx.lineDashOffset = -animationOffset; // ปล่อยให้เลื่อนถอยหลังเพื่อสร้างเอฟเฟกต์ลูกศรวิ่งไปข้างหน้า
+            ctx.beginPath();
+            
+            // ตรรกะ Left-to-Right บนจอภาพ: วิ่งจากตำแหน่ง X มาก (ขวา: LA/LV) ไปหา X น้อย (ซ้าย: RA/RV)
+            ctx.moveTo(rightBoxLeftEdge + 10, midY);
+            ctx.lineTo(leftBoxRightEdge - 10, midY);
+            ctx.stroke();
+            ctx.restore();
+
+            // วาดหน้ากากวงกลมส้มทับกลาง
+            ctx.fillStyle = "#ffffff"; ctx.strokeStyle = "#e65100"; ctx.lineWidth = 3; ctx.beginPath();
+            ctx.arc(midX, midY, 11, 0, 2 * Math.PI); ctx.fill(); ctx.stroke();
+            ctx.fillStyle = "#e65100"; ctx.font = "bold 9px Arial"; ctx.textAlign = "center";
+            ctx.fillText(label, midX, midY + 3);
+        }
+
+        // 🛠️ ฟังก์ชันวาดสะพานเชื่อมต่อ PDA พร้อมติดลูกศรเวกเตอร์ทิศทางการวิ่งอนิเมชันขยับได้ในระนาบหลอดเลือดใหญ่
+        function drawPDAShuntWithVector(aoX, paX, y, direction) {
+            let startX = Math.min(aoX, paX);
+            let endX = Math.max(aoX, paX);
+            let midX = (startX + endX) / 2;
+
+            // วาดท่อสะพานเชื่อมหลักสีส้ม
+            ctx.strokeStyle = "#ffa726"; ctx.lineWidth = 10; ctx.beginPath();
+            ctx.moveTo(startX, y); ctx.lineTo(endX, y); ctx.stroke();
+
+            // 🍊 เวกเตอร์อนิเมชันสำหรับ PDA: วิ่งจากท่อ Aorta (ฝั่งขวา) ข้ามไปท่อ Pulmonary Artery (ฝั่งซ้าย)
+            ctx.save();
+            ctx.strokeStyle = "#e65100"; ctx.lineWidth = 2.5;
+            ctx.setLineDash([5, 4]);
+            ctx.lineDashOffset = -animationOffset;
+            ctx.beginPath();
+            ctx.moveTo(endX - 5, y);
+            ctx.lineTo(startX + 5, y);
+            ctx.stroke();
+            ctx.restore();
+
+            ctx.fillStyle = "#ffffff"; ctx.strokeStyle = "#e65100"; ctx.lineWidth = 2; ctx.beginPath();
+            ctx.ellipse(midX, y, 16, 8, 0, 0, 2 * Math.PI); ctx.fill(); ctx.stroke();
+            ctx.fillStyle = "#e65100"; ctx.font = "bold 8px Arial"; ctx.textAlign = "center";
+            ctx.fillText("PDA", midX, y + 3);
         }
 
         function drawStenosisCircle(x, y, label) {
@@ -495,14 +551,17 @@
             ctx.fillStyle = "#ffffff"; ctx.font = "bold 10px Arial"; ctx.textAlign = "center"; ctx.fillText(label, endX, endY + 1);
         }
 
-        function drawPDAShunt(aoX, paX, y) {
-            let startX = Math.min(aoX, paX); let endX = Math.max(aoX, paX); let midX = (startX + endX) / 2;
-            ctx.strokeStyle = "#ffa726"; ctx.lineWidth = 10; ctx.beginPath(); ctx.moveTo(startX, y); ctx.lineTo(endX, y); ctx.stroke();
-            ctx.fillStyle = "#ffffff"; ctx.strokeStyle = "#e65100"; ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(midX, y, 16, 8, 0, 0, 2 * Math.PI); ctx.fill(); ctx.stroke();
-            ctx.fillStyle = "#e65100"; ctx.font = "bold 8px Arial"; ctx.textAlign = "center"; ctx.fillText("PDA", midX, y + 3);
+        // 🔄 ฟังก์ชันลูปคุมแอนิเมชันทำงานแบบไร้จุดสิ้นสุด (Smooth Animation Loop)
+        function runAnimationLoop() {
+            animationOffset += 0.4; // ปรับความเร็วในการวิ่งของกระแสเลือดลัดวงจรตรงนี้ได้ครับ
+            if (animationOffset > 20) animationOffset = 0;
+            drawHeart(); // สั่งวาดซ้ำเพื่อรีเฟรชหน้าจอลูกศรให้เคลื่อนไหว
+            requestAnimationFrame(runAnimationLoop);
         }
 
+        // เริ่มต้นรันระบบตั้งต้น
         applyPreset('normal');
+        runAnimationLoop(); // จุดชนวนให้ลูกศรขยับได้ทันทีกรณีเปิดหน้าเว็บแอปพลิเคชัน
     </script>
 </body>
 </html>
